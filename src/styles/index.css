@@ -1,0 +1,154 @@
+/* =========================================================
+   TAILWIND DIRECTIVES
+   Estas directivas deben ir primero para generar todas las clases.
+========================================================= */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================
+   GLOBAL STYLES
+========================================================= */
+
+/* Fuente global coherente con tu configuración Tailwind */
+html, body {
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui;
+  scroll-behavior: smooth;
+  color: #111827;
+  background-color: #ffffff;
+}
+
+/* Suavidad visual y soporte reduce motion */
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* =========================================================
+   SCROLL & SNAP EXPERIENCE
+========================================================= */
+
+/* Scroll vertical por pantallas */
+.scroll-snap-container {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+}
+
+/* Cada sección (screen) se “ancla” al viewport */
+.scroll-snap-section {
+  scroll-snap-align: start;
+  min-height: 100vh;
+  position: relative;
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+/* Transición inicial (fuera de vista) */
+.scroll-snap-section.hidden {
+  opacity: 0;
+  transform: translateY(40px);
+}
+
+/* Transición visible (cuando entra) */
+.scroll-snap-section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Ocultar scrollbar (versión estética) */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =========================================================
+   HERO & DUOTONO (heredado de tu diseño)
+========================================================= */
+
+/* Contenedor magenta para efecto duotono */
+.duotono-container {
+  background-color: #e70c7b;
+}
+
+/* Imagen con duotono (solo se aplica en Hero si lo usas) */
+.duotono-xiomara {
+  filter: grayscale(100%);
+  mix-blend-mode: multiply;
+  isolation: isolate;
+}
+
+/* =========================================================
+   ANIMACIONES PERSONALIZADAS (fade, slide)
+========================================================= */
+
+/* Fade In */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Slide In Up */
+@keyframes slideInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Fade In + Blur */
+@keyframes fadeBlur {
+  0% { opacity: 0; filter: blur(10px); transform: translateY(20px); }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+/* Clases utilitarias globales */
+.animate-fadeIn      { animation: fadeIn 1s ease-out both; }
+.animate-slideInUp   { animation: slideInUp 0.9s ease-out both; }
+.animate-fadeBlur    { animation: fadeBlur 1s ease-out both; }
+
+/* =========================================================
+   REFINED UTILITY STYLES
+========================================================= */
+
+/* Suavizar bordes, botones, sombras */
+button, input, select, textarea {
+  transition: all 0.3s ease;
+}
+
+/* Hover states más pulidos */
+button:hover, a:hover {
+  opacity: 0.9;
+}
+
+/* Selección de texto con color de marca */
+::selection {
+  background-color: #e70c7b;
+  color: #ffffff;
+}
+
+/* =========================================================
+   MOBILE OPTIMIZATION
+========================================================= */
+
+/* Evita saltos de scroll bruscos */
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Centrado vertical más suave para pantallas pequeñas */
+@media (max-width: 768px) {
+  .scroll-snap-section {
+    min-height: 100vh;
+    padding-top: 4rem;
+    padding-bottom: 4rem;
+  }
+}
