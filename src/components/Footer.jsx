@@ -12,8 +12,8 @@ export default function Footer() {
         {/* Brand */}
         <div className="md:col-span-2 lg:col-span-2">
           <Link to="/" className="inline-flex items-center gap-2">
-            <span className="inline-flex w-10 h-10 items-center justify-center rounded-lg bg-xiomara-sky font-bold">XV</span>
-            <span className="text-xl font-extrabold tracking-tight">Xiomara Visas</span>
+            <span className="inline-flex w-10 h-10 items-center justify-center rounded-lg bg-xiomara-sky font-bold">VcX</span>
+            <span className="text-xl font-extrabold tracking-tight">Visas Con Xiomara</span>
           </Link>
           <p className="mt-4 text-white/80 max-w-md">
             Acompañamiento experto para tus trámites de visa: claridad, agilidad y resultados.
@@ -94,7 +94,7 @@ export default function Footer() {
 
       {/* Bottom bar */}
       <div className={`${wrap} py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-white/70`}>
-        <p>© {new Date().getFullYear()} Xiomara Visas. Todos los derechos reservados.</p>
+        <p>© {new Date().getFullYear()} Visas Con Xiomara. Todos los derechos reservados.</p>
         <div className="flex items-center gap-4">
           <Link to="/legal/privacidad" className="hover:text-white transition">Privacidad</Link>
           <span className="opacity-40">•</span>

@@ -64,8 +64,8 @@ export default function Navbar() {
       <div className={`${wrap} h-16 flex items-center justify-between`}>
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 text-xl font-extrabold text-xiomara-navy">
-          <span className={chip}>XV</span>
-          <span>Xiomara Visas</span>
+          <span className={chip}>VX</span>
+          <span>Visas Con Xiomara</span>
         </Link>
 
         {/* Navegación Desktop */}
