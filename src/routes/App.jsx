@@ -1,16 +1,16 @@
 import React from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 
-
 // ✅ Páginas públicas
-import Home from "../pages/public/Home";              // Nueva landing con Hero + WhyAdvisorSection
+import Home from "../pages/public/Home";
 import Services from "../pages/public/Services";
 import Packages from "../pages/public/Packages";
 import Resources from "../pages/public/Resources";
 import Login from "../pages/public/Login";
 import ScrollLanding from "../pages/public/ScrollLanding";
+
 // ✅ Admin
 import Dashboard from "../pages/admin/Dashboard";
 import Clients from "../pages/admin/Clients";
@@ -59,11 +59,11 @@ export default function App() {
               }
             />
 
-            {/* Cliente */}
+            {/* Cliente (usa rol 'customer' del backend) */}
             <Route
               path="/portal"
               element={
-                <ProtectedRoute allow={["client", "admin"]}>
+                <ProtectedRoute allow={["customer", "admin"]}>
                   <ClientPortal />
                 </ProtectedRoute>
               }
@@ -71,16 +71,16 @@ export default function App() {
             <Route
               path="/formulario"
               element={
-                <ProtectedRoute allow={["client", "admin"]}>
+                <ProtectedRoute allow={["customer", "admin"]}>
                   <IntakeForm />
                 </ProtectedRoute>
               }
             />
+
+            {/* Fallback 404 */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-
-        {/* Footer global */}
-    
       </div>
     </AuthProvider>
   );

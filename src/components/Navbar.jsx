@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, LogOut, Menu, X, ChevronDown, Calendar } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 /** Utilidades de estilo */
 const wrap        = "mx-auto w-full max-w-7xl px-4";
@@ -12,10 +13,7 @@ const chip        = "inline-flex w-9 h-9 items-center justify-center rounded-lg 
 const btnPrimary  = "inline-flex items-center justify-center h-10 px-4 text-sm font-semibold text-white bg-xiomara-sky hover:bg-xiomara-pink transition rounded-lg";
 
 export default function Navbar() {
-  // const { user, logout } = useAuth();
-  const user   = { isLoggedIn: false, role: "user", name: "Invitado" }; // stub
-  const logout = () => console.log("Logout ejecutado (stub)");
-
+  const { user, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isServiciosOpen, setIsServiciosOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -44,14 +42,32 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
+  /** Cerrar menús al cambiar de ruta */
+  useEffect(() => {
+    setIsMenuOpen(false);
+    setIsServiciosOpen(false);
+    setIsUserMenuOpen(false);
+  }, [pathname, hash]);
+
   /** Helper para estilos de NavLink */
   const navClass = ({ isActive }) =>
     `group ${linkBase} ${isActive ? linkActive : linkDefault} ${underline}`;
 
   const closeMobile = () => setIsMenuOpen(false);
 
-  /** Ayuda: marcar activo cuando estás en landing con #anclas (snap screens) */
+  /** Marcar activo cuando estás en landing con #anclas */
   const isHashActive = (id) => pathname === "/" && hash === id;
+
+  /** Logout handler */
+  const handleLogout = () => {
+    setIsUserMenuOpen(false);
+    logout();
+    navigate("/");
+  };
+
+  /** Ocultar navbar en rutas de auth (después de montar hooks) */
+  const hide = ["/login"].includes(pathname);
+  if (hide) return null;
 
   return (
     <header
@@ -70,7 +86,6 @@ export default function Navbar() {
 
         {/* Navegación Desktop */}
         <nav className="hidden md:flex items-center gap-6" aria-label="Primary">
-          {/* Inicio / Secciones (si usas scroll-snap en / con #s1,#s2...) */}
           <Link
             to="/#s1"
             className={`group ${linkBase} ${linkDefault} ${underline} ${isHashActive("#s1") ? linkActive : ""}`}
@@ -79,9 +94,12 @@ export default function Navbar() {
           </Link>
 
           {/* Dropdown: Servicios */}
-          <div className="relative" ref={serviciosRef}
-               onMouseEnter={() => setIsServiciosOpen(true)}
-               onMouseLeave={() => setIsServiciosOpen(false)}>
+          <div
+            className="relative"
+            ref={serviciosRef}
+            onMouseEnter={() => setIsServiciosOpen(true)}
+            onMouseLeave={() => setIsServiciosOpen(false)}
+          >
             <button
               className={`group ${linkBase} ${linkDefault} ${underline} rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-xiomara-pink/60 px-1`}
               onClick={() => setIsServiciosOpen((s) => !s)}
@@ -130,7 +148,7 @@ export default function Navbar() {
             <Calendar size={16} /> Agenda tu asesoría
           </Link>
 
-          {!user?.isLoggedIn ? (
+          {!user ? (
             <Link to="/login" className={btnPrimary} aria-label="Iniciar sesión">
               <LogIn size={18} className="mr-2" /> Iniciar sesión
             </Link>
@@ -142,14 +160,11 @@ export default function Navbar() {
                 aria-haspopup="menu"
                 aria-expanded={isUserMenuOpen}
               >
-                <span className="hidden sm:inline text-ink-700">{user?.name ?? "Usuario"}</span>
+                <span className="hidden sm:inline text-ink-700">{user?.email ?? "Usuario"}</span>
                 <ChevronDown size={16} />
               </button>
               {isUserMenuOpen && (
                 <div role="menu" className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-100 bg-white shadow-lg p-1">
-                  <Link to="/perfil" className="block rounded-md px-3 py-2 text-sm hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
-                    Mi Perfil
-                  </Link>
                   <Link to="/portal" className="block rounded-md px-3 py-2 text-sm hover:bg-gray-50" onClick={() => setIsUserMenuOpen(false)}>
                     Portal
                   </Link>
@@ -159,7 +174,7 @@ export default function Navbar() {
                     </Link>
                   )}
                   <button
-                    onClick={() => { setIsUserMenuOpen(false); logout(); navigate("/"); }}
+                    onClick={handleLogout}
                     className="w-full text-left rounded-md px-3 py-2 text-sm hover:bg-gray-50 text-red-600 inline-flex items-center gap-2"
                   >
                     <LogOut size={16} /> Salir
@@ -194,12 +209,7 @@ export default function Navbar() {
                 <span className="text-sm font-medium">Servicios</span>
                 <ChevronDown size={18} className="transition group-open:rotate-180" />
               </summary>
-              <div className="mt-1 ml-2 flex flex-col">
-                <Link to="/servicios/usa"    className="px-2 py-2 text-sm rounded-md hover:bg-gray-50" onClick={closeMobile}>Visa EE. UU.</Link>
-                <Link to="/servicios/canada" className="px-2 py-2 text-sm rounded-md hover:bg-gray-50" onClick={closeMobile}>Visa Canadá</Link>
-                <Link to="/servicios/espana" className="px-2 py-2 text-sm rounded-md hover:bg-gray-50" onClick={closeMobile}>España (Nómada/Residencia)</Link>
-                <Link to="/servicios/otros"  className="px-2 py-2 text-sm rounded-md hover:bg-gray-50" onClick={closeMobile}>Otros países</Link>
-              </div>
+        
             </details>
 
             <NavLink to="/paquetes" className={navClass} onClick={closeMobile}>Paquetes</NavLink>
@@ -214,13 +224,13 @@ export default function Navbar() {
             </div>
 
             <div className="pt-2">
-              {!user?.isLoggedIn ? (
+              {!user ? (
                 <Link to="/login" className={`${btnPrimary} w-full`} onClick={closeMobile}>
                   <LogIn size={18} className="mr-2" /> Iniciar sesión
                 </Link>
               ) : (
                 <button
-                  onClick={() => { closeMobile(); logout(); navigate("/"); }}
+                  onClick={() => { closeMobile(); handleLogout(); }}
                   className="inline-flex items-center justify-center h-10 px-4 w-full text-sm gap-2 bg-gray-900 text-white hover:bg-black transition rounded-lg font-semibold"
                 >
                   <LogOut size={18} /> Salir
