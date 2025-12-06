@@ -14,6 +14,8 @@ import ScrollLanding from "../pages/public/ScrollLanding";
 // ✅ Admin
 import Dashboard from "../pages/admin/Dashboard";
 import Clients from "../pages/admin/Clients";
+import ReviewDocs from "../pages/admin/ReviewDocs";
+import Reports from "../pages/admin/Reports";
 
 // ✅ Cliente
 import ClientPortal from "../pages/client/ClientPortal";
@@ -55,6 +57,22 @@ export default function App() {
               element={
                 <ProtectedRoute allow={["admin"]}>
                   <Clients />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/documentos"
+              element={
+                <ProtectedRoute allow={["admin"]}>
+                  <ReviewDocs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/reportes"
+              element={
+                <ProtectedRoute allow={["admin"]}>
+                  <Reports />
                 </ProtectedRoute>
               }
             />

@@ -42,6 +42,8 @@ const badge = {
   pending: "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
+const PERSONAL_CATS = ["PASAPORTE", "FOTO", "DNI", "CONSTANCIAS DE ESTUDIOS O CV"];
+
 export default function ClientPortal() {
   const { user } = useAuth();
 
@@ -50,6 +52,8 @@ export default function ClientPortal() {
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  const [familyMembers, setFamilyMembers] = useState([]);
+  const [selectedMember, setSelectedMember] = useState("");
 
   // UI state
   const [confirmId, setConfirmId] = useState(null);
@@ -76,28 +80,79 @@ export default function ClientPortal() {
     return map;
   }, [docs]);
 
-  const uploadedCats = useMemo(() => new Set(docs.map((d) => d.category)), [docs]);
-  const availableCats = useMemo(() => cats.filter((c) => !uploadedCats.has(c)), [cats, uploadedCats]);
+  const availableCats = useMemo(() => {
+    return cats.filter(c => {
+      const isPersonal = PERSONAL_CATS.includes(c);
 
-  const completed = useMemo(() => {
-    const uploaded = new Set(docs.map((d) => d.category));
-    return cats.filter((c) => uploaded.has(c)).length;
-  }, [cats, docs]);
+      if (selectedMember) {
+        // Member selected: only personal cats allowed
+        if (!isPersonal) return false;
+
+        // Check if uploaded by this member
+        const uploaded = docs.some(d => d.category === c && d.family_member_name === selectedMember);
+        return !uploaded;
+      } else {
+        // Main applicant
+        // If personal, check if uploaded by Main (empty name)
+        if (isPersonal) {
+          const uploaded = docs.some(d => d.category === c && !d.family_member_name);
+          return !uploaded;
+        }
+
+        // If shared, check if uploaded by anyone (or just Main)
+        const uploaded = docs.some(d => d.category === c);
+        return !uploaded;
+      }
+    });
+  }, [cats, docs, selectedMember]);
 
   const progress = useMemo(() => {
     if (!cats.length) return 0;
-    return Math.round((completed / cats.length) * 100);
-  }, [completed, cats]);
+
+    const sharedCats = cats.filter(c => !PERSONAL_CATS.includes(c));
+    const personalCats = cats.filter(c => PERSONAL_CATS.includes(c));
+
+    // Total required = Shared + (Personal * (1 + familyMembers.length))
+    const totalRequired = sharedCats.length + (personalCats.length * (1 + familyMembers.length));
+    if (totalRequired === 0) return 0;
+
+    // Count uploaded shared
+    const uploadedShared = sharedCats.filter(c => docs.some(d => d.category === c)).length;
+
+    // Count uploaded personal
+    let uploadedPersonal = 0;
+
+    // For Main
+    uploadedPersonal += personalCats.filter(c => docs.some(d => d.category === c && !d.family_member_name)).length;
+
+    // For Members
+    familyMembers.forEach(m => {
+      const name = `${m.nombres} ${m.apellidos}`.trim();
+      uploadedPersonal += personalCats.filter(c => docs.some(d => d.category === c && d.family_member_name === name)).length;
+    });
+
+    const totalCompleted = uploadedShared + uploadedPersonal;
+
+    return Math.round((totalCompleted / totalRequired) * 100);
+  }, [cats, docs, familyMembers]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [c, d] = await Promise.all([
+      const [c, d, f] = await Promise.all([
         api.get("/api/v1/categories"),
         api.get("/api/v1/documents"),
+        api.forms.getMy().catch(() => null)
       ]);
       setCats(c || []);
       setDocs(d || []);
+
+      if (f && f.family_members_data) {
+        try {
+          setFamilyMembers(JSON.parse(f.family_members_data));
+        } catch (e) { }
+      }
+
       setErr(null);
     } catch (e) {
       setErr(e?.message || "No se pudo cargar información");
@@ -178,6 +233,7 @@ export default function ClientPortal() {
       const fd = new FormData();
       fd.append("category", values.category);
       fd.append("file", values.file);
+      if (selectedMember) fd.append("family_member_name", selectedMember);
       await api.upload("/api/v1/documents", fd);
 
       toast.success("Archivo subido con éxito");
@@ -215,16 +271,16 @@ export default function ClientPortal() {
   const dzBorder = isDragReject
     ? "border-rose-300 bg-rose-50"
     : isDragAccept
-    ? "border-emerald-300 bg-emerald-50"
-    : isDragActive
-    ? "border-xiomara-pink bg-xiomara-pink/10"
-    : "border-dashed";
+      ? "border-emerald-300 bg-emerald-50"
+      : isDragActive
+        ? "border-xiomara-pink bg-xiomara-pink/10"
+        : "border-dashed";
 
   const hint = isDragReject
     ? "Formato no aceptado"
     : isDragAccept
-    ? "¡Suelta para adjuntar!"
-    : "Arrastra y suelta aquí o haz clic en ‘Elegir archivo’";
+      ? "¡Suelta para adjuntar!"
+      : "Arrastra y suelta aquí o haz clic en ‘Elegir archivo’";
 
   const noMoreCats = availableCats.length === 0;
 
@@ -254,7 +310,7 @@ export default function ClientPortal() {
                   <span className="font-semibold">{progress}%</span>
                 </div>
                 <Progress value={progress} className="mt-2" />
-                <div className="text-[11px] text-ink-500 mt-1">{completed}/{cats.length} categorías completadas</div>
+                <div className="text-[11px] text-ink-500 mt-1">Progreso General</div>
               </div>
             </CardContent>
           </Card>
@@ -270,6 +326,32 @@ export default function ClientPortal() {
         )}
       </AnimatePresence>
 
+      {/* Call to action: Formulario */}
+      <motion.div {...fadeUp} className="mt-6">
+        <Card className="rounded-2xl border-2 border-xiomara-pink/20 bg-gradient-to-r from-xiomara-sky/5 to-xiomara-pink/5">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-xiomara-sky to-xiomara-pink grid place-items-center shrink-0">
+                  <FileText size={28} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-xiomara-navy">Completa tu Formulario de Información</h2>
+                  <p className="text-sm text-ink-600 mt-1">Proporciona tus datos personales, académicos y laborales para tu solicitud de visa.</p>
+                </div>
+              </div>
+              <Button
+                asChild
+                className="h-12 px-6 bg-gradient-to-r from-xiomara-sky to-xiomara-pink hover:from-xiomara-pink hover:to-xiomara-sky text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all">
+                <a href="/formulario">
+                  Ir al Formulario →
+                </a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
       <div className="grid lg:grid-cols-3 gap-6 mt-6">
         {/* Left: Upload panel */}
         <motion.div {...fadeUp} className="lg:col-span-1">
@@ -279,6 +361,26 @@ export default function ClientPortal() {
             </CardHeader>
             <CardContent>
               <p className="text-xs text-ink-500">Formatos permitidos: PDF, JPG, PNG. Máx {MAX_MB}MB.</p>
+
+              {/* Family Member Select */}
+              {familyMembers.length > 0 && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium">Pertenece a</label>
+                  <Select value={selectedMember} onValueChange={(val) => setSelectedMember(val === "main" ? "" : val)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Solicitante Principal" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="main">Solicitante Principal</SelectItem>
+                      {familyMembers.map((m, i) => (
+                        <SelectItem key={i} value={`${m.nombres} ${m.apellidos}`.trim()}>
+                          {m.nombres} {m.apellidos} ({m.parentesco})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Category select */}
               <div className="mt-4">
@@ -350,30 +452,75 @@ export default function ClientPortal() {
                 <span className="text-xs text-ink-500">Tu asesor validará cada documento</span>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                  {loading
-                    ? Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)
-                    : cats.map((c) => {
-                        const subidos = byCategory.get(c) || [];
-                        const s = subidos.some((d) => d.status === "rejected")
-                          ? "rejected"
-                          : subidos.some((d) => d.status === "pending")
-                          ? "pending"
-                          : subidos.length
-                          ? "approved"
-                          : null;
-                        return (
-                          <motion.div layout key={c} className="flex items-center justify-between px-3 py-2 rounded-xl border bg-white">
-                            <span className="text-sm">{c}</span>
-                            {s ? (
-                              statusPill(s)
-                            ) : (
-                              <span className="text-xs text-ink-400">Sin archivo</span>
-                            )}
-                          </motion.div>
-                        );
-                      })}
-                </div>
+                {loading ? (
+                  <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                    {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-xl" />)}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Shared Docs */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-xiomara-navy mb-2">Documentos Generales</h4>
+                      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {cats.filter(c => !PERSONAL_CATS.includes(c)).map(c => {
+                          const subidos = docs.filter(d => d.category === c);
+                          const s = subidos.some(d => d.status === "rejected") ? "rejected" :
+                            subidos.some(d => d.status === "pending") ? "pending" :
+                              subidos.length ? "approved" : null;
+                          return (
+                            <div key={c} className="flex items-center justify-between px-3 py-2 rounded-xl border bg-white">
+                              <span className="text-sm truncate mr-2" title={c}>{c}</span>
+                              {s ? statusPill(s) : <span className="text-xs text-ink-400">Pendiente</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Main Applicant Personal Docs */}
+                    <div>
+                      <h4 className="text-sm font-semibold text-xiomara-navy mb-2">Solicitante Principal</h4>
+                      <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {cats.filter(c => PERSONAL_CATS.includes(c)).map(c => {
+                          const subidos = docs.filter(d => d.category === c && !d.family_member_name);
+                          const s = subidos.some(d => d.status === "rejected") ? "rejected" :
+                            subidos.some(d => d.status === "pending") ? "pending" :
+                              subidos.length ? "approved" : null;
+                          return (
+                            <div key={c} className="flex items-center justify-between px-3 py-2 rounded-xl border bg-white">
+                              <span className="text-sm truncate mr-2" title={c}>{c}</span>
+                              {s ? statusPill(s) : <span className="text-xs text-ink-400">Pendiente</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Family Members Personal Docs */}
+                    {familyMembers.map((m, i) => {
+                      const name = `${m.nombres} ${m.apellidos}`.trim();
+                      return (
+                        <div key={i}>
+                          <h4 className="text-sm font-semibold text-xiomara-navy mb-2">{name} ({m.parentesco})</h4>
+                          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                            {cats.filter(c => PERSONAL_CATS.includes(c)).map(c => {
+                              const subidos = docs.filter(d => d.category === c && d.family_member_name === name);
+                              const s = subidos.some(d => d.status === "rejected") ? "rejected" :
+                                subidos.some(d => d.status === "pending") ? "pending" :
+                                  subidos.length ? "approved" : null;
+                              return (
+                                <div key={c} className="flex items-center justify-between px-3 py-2 rounded-xl border bg-white">
+                                  <span className="text-sm truncate mr-2" title={c}>{c}</span>
+                                  {s ? statusPill(s) : <span className="text-xs text-ink-400">Pendiente</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
@@ -403,7 +550,14 @@ export default function ClientPortal() {
                           <FileText size={18} className="text-ink-400" />
                         </div>
                         <div className="text-sm min-w-0">
-                          <div className="font-medium truncate" title={`${d.category} — ${d.original_name}`}>{d.category} — {d.original_name}</div>
+                          <div className="font-medium truncate" title={`${d.category} — ${d.original_name}`}>
+                            {d.category} — {d.original_name}
+                            {d.family_member_name && (
+                              <span className="ml-2 text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">
+                                {d.family_member_name}
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-ink-500">
                             {(d.size_bytes / 1024).toFixed(0)} KB · {d.mime_type}
                             {d.admin_notes ? ` · ${d.admin_notes}` : ""}
