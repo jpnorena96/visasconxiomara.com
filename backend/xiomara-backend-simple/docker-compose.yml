@@ -1,0 +1,27 @@
+version: '3.9'
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: xiomara_simple
+      MYSQL_USER: ximara
+      MYSQL_PASSWORD: strongpassword
+    ports: ["3306:3306"]
+    command: ["--default-authentication-plugin=mysql_native_password"]
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  api:
+    build: .
+    env_file: .env
+    depends_on: [mysql]
+    ports: ["8000:8000"]
+    volumes:
+      - .:/app
+      - uploads:${UPLOAD_DIR:-/data/uploads}
+    command: ["uvicorn","app.main:app","--host","0.0.0.0","--port","8000","--reload"]
+
+volumes:
+  mysql_data:
+  uploads:
