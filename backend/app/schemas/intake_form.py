@@ -33,7 +33,6 @@ class IntakeFormBase(BaseModel):
     family_members_data: Optional[str] = None
 
 class IntakeFormCreate(IntakeFormBase):
-    user_id: int
     is_completed: bool = False
 
 class IntakeFormUpdate(IntakeFormBase):

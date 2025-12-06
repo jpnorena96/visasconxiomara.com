@@ -49,6 +49,18 @@ def create_client(
     db.commit()
     db.refresh(new_client)
     
+    # Log activity
+    from app.services.activity_logger import log_activity
+    log_activity(
+        db=db,
+        activity_type="user_registered",
+        title="Nuevo cliente registrado",
+        description=f"{new_user.email} se registró en el sistema",
+        user_id=new_user.id,
+        performed_by_id=current_user.id,
+        performed_by_email=current_user.email
+    )
+    
     return {
         **new_client.__dict__,
         "email": new_user.email
@@ -151,6 +163,18 @@ def update_client(
     
     db.commit()
     db.refresh(client)
+
+    # Log activity
+    from app.services.activity_logger import log_activity
+    log_activity(
+        db=db,
+        activity_type="client_updated",
+        title="Cliente actualizado",
+        description=f"Admin actualizó perfil de cliente ID {client.id}",
+        user_id=client.user_id,
+        performed_by_id=current_user.id,
+        performed_by_email=current_user.email
+    )
     
     return client
 

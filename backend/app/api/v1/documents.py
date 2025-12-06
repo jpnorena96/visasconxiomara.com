@@ -80,6 +80,7 @@ async def upload_document(
             repo.delete(doc=old)
 
     # Crear registro nuevo
+    # Crear registro nuevo
     doc = repo.create(
         user_id=user.id,
         category=category,
@@ -89,6 +90,19 @@ async def upload_document(
         size_bytes=len(content),
         family_member_name=family_member_name
     )
+
+    # Log activity
+    from app.services.activity_logger import log_activity
+    log_activity(
+        db=db,
+        activity_type="document_uploaded",
+        title="Nuevo documento subido",
+        description=f"{user.email} subió {category}",
+        user_id=user.id,
+        performed_by_id=user.id,
+        performed_by_email=user.email
+    )
+
     return doc
 
 @router.get("/documents", response_model=list[DocumentOut])

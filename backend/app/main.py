@@ -9,9 +9,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(',') if o],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
+
+print(f"CORS Origins configured: {[o.strip() for o in settings.CORS_ORIGINS.split(',') if o]}")
 
 # Auth and user endpoints
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
