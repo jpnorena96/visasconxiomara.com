@@ -25,10 +25,13 @@ const schema = z.object({
   viajes: z.string().optional(),
   familiaresExterior: z.string().optional(),
   familyMembers: z.array(z.object({
-    nombres: z.string().optional(),
-    apellidos: z.string().optional(),
-    parentesco: z.string().optional(),
-    edad: z.string().optional()
+    nombres: z.string().min(1, 'Requerido'),
+    apellidos: z.string().min(1, 'Requerido'),
+    parentesco: z.string().min(1, 'Requerido'),
+    fechaNacimiento: z.string().min(1, 'Requerido'),
+    nacionalidad: z.string().min(1, 'Requerido'),
+    pasaporte: z.string().min(1, 'Requerido'),
+    ocupacion: z.string().optional(),
   })).optional()
 })
 
@@ -443,47 +446,87 @@ export default function IntakeForm() {
                           </div>
 
                           <div className="space-y-4">
-                            {fields.map((field, index) => (
-                              <div key={field.id} className="bg-gray-50 p-4 rounded-xl relative">
-                                <button
-                                  type="button"
-                                  onClick={() => remove(index)}
-                                  className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                                <div className="grid md:grid-cols-2 gap-4 pr-8">
-                                  <Field
-                                    label="Nombres"
-                                    name={`familyMembers.${index}.nombres`}
-                                    register={register}
-                                    errors={errors}
-                                    placeholder="Nombres"
-                                  />
-                                  <Field
-                                    label="Apellidos"
-                                    name={`familyMembers.${index}.apellidos`}
-                                    register={register}
-                                    errors={errors}
-                                    placeholder="Apellidos"
-                                  />
-                                  <Field
-                                    label="Parentesco"
-                                    name={`familyMembers.${index}.parentesco`}
-                                    register={register}
-                                    errors={errors}
-                                    placeholder="Ej: Hijo/a, Esposo/a"
-                                  />
-                                  <Field
-                                    label="Edad"
-                                    name={`familyMembers.${index}.edad`}
-                                    register={register}
-                                    errors={errors}
-                                    placeholder="Edad"
-                                  />
+                            {fields.map((field, index) => {
+                              const dob = watch(`familyMembers.${index}.fechaNacimiento`);
+                              const age = dob ? Math.floor((new Date() - new Date(dob)) / 31557600000) : 0;
+                              const isMinor = age > 0 && age < 18;
+
+                              return (
+                                <div key={field.id} className="bg-gray-50 p-4 rounded-xl relative border border-gray-200">
+                                  <button
+                                    type="button"
+                                    onClick={() => remove(index)}
+                                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+
+                                  <div className="mb-4">
+                                    <h4 className="text-sm font-bold text-xiomara-navy uppercase tracking-wide">
+                                      Miembro #{index + 1} {isMinor && <span className="ml-2 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">Menor de Edad ({age} años)</span>}
+                                    </h4>
+                                  </div>
+
+                                  <div className="grid md:grid-cols-2 gap-4 pr-8">
+                                    <Field
+                                      label="Nombres"
+                                      name={`familyMembers.${index}.nombres`}
+                                      register={register}
+                                      errors={errors}
+                                      placeholder="Nombres"
+                                      required
+                                    />
+                                    <Field
+                                      label="Apellidos"
+                                      name={`familyMembers.${index}.apellidos`}
+                                      register={register}
+                                      errors={errors}
+                                      placeholder="Apellidos"
+                                      required
+                                    />
+                                    <Field
+                                      label="Parentesco"
+                                      name={`familyMembers.${index}.parentesco`}
+                                      register={register}
+                                      errors={errors}
+                                      placeholder="Ej: Hijo/a, Esposo/a"
+                                      required
+                                    />
+                                    <Field
+                                      label="Fecha de Nacimiento"
+                                      name={`familyMembers.${index}.fechaNacimiento`}
+                                      type="date"
+                                      register={register}
+                                      errors={errors}
+                                      required
+                                    />
+                                    <Field
+                                      label="Nacionalidad"
+                                      name={`familyMembers.${index}.nacionalidad`}
+                                      register={register}
+                                      errors={errors}
+                                      placeholder="Nacionalidad"
+                                      required
+                                    />
+                                    <Field
+                                      label="Número de Pasaporte"
+                                      name={`familyMembers.${index}.pasaporte`}
+                                      register={register}
+                                      errors={errors}
+                                      placeholder="Número de Pasaporte"
+                                      required
+                                    />
+                                    <Field
+                                      label={isMinor ? "Institución Educativa / Grado" : "Ocupación / Empresa"}
+                                      name={`familyMembers.${index}.ocupacion`}
+                                      register={register}
+                                      errors={errors}
+                                      placeholder={isMinor ? "Ej: Colegio San José - 5to Grado" : "Ej: Ingeniero - Google"}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              )
+                            })}
                             {fields.length === 0 && (
                               <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                                 No hay miembros agregados al grupo familiar.

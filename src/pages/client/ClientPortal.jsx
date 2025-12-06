@@ -8,7 +8,7 @@ import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Upload, CheckCircle2, XCircle, Clock, FileText, Trash2, Download, Loader2, Percent, ShieldCheck,
+  Upload, CheckCircle2, XCircle, Clock, FileText, Trash2, Download, Loader2, Percent, ShieldCheck, ArrowRight, RefreshCw,
 } from "lucide-react";
 
 // IMPORTA TODO DESDE EL BARREL "src/components/ui/index.jsx"
@@ -42,7 +42,15 @@ const badge = {
   pending: "bg-amber-50 text-amber-700 border border-amber-200",
 };
 
-const PERSONAL_CATS = ["PASAPORTE", "FOTO", "DNI", "CONSTANCIAS DE ESTUDIOS O CV"];
+const CATS_UNIVERSAL = ["PASAPORTE", "FOTO", "DNI", "CONSTANCIAS DE ESTUDIOS O CV"];
+const CATS_ADULT_ONLY = ["EMPRESAS O CONSTANCIA DE TRABAJO", "BOLETAS DE PAGO O CUENTAS DE PAGO"];
+
+// Helper para calcular edad
+const getAge = (dob) => {
+  if (!dob) return 0;
+  const diff = Date.now() - new Date(dob).getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+}
 
 export default function ClientPortal() {
   const { user } = useAuth();
@@ -80,40 +88,77 @@ export default function ClientPortal() {
     return map;
   }, [docs]);
 
+  // Determinar categorías requeridas por miembro
+  const getRequiredCatsForMember = useCallback((member) => {
+    // Si es Main (member es null/undefined) o Adulto
+    let required = [...CATS_UNIVERSAL];
+
+    let isAdult = true;
+    if (member && member.fechaNacimiento) {
+      isAdult = getAge(member.fechaNacimiento) >= 18;
+    }
+
+    if (isAdult) {
+      required = [...required, ...CATS_ADULT_ONLY];
+    }
+
+    return required;
+  }, []);
+
   const availableCats = useMemo(() => {
+    // Shared cats (those NOT in Universal or Adult Only)
+    const sharedCats = cats.filter(c => !CATS_UNIVERSAL.includes(c) && !CATS_ADULT_ONLY.includes(c));
+
     return cats.filter(c => {
-      const isPersonal = PERSONAL_CATS.includes(c);
+      const isUniversal = CATS_UNIVERSAL.includes(c);
+      const isAdultOnly = CATS_ADULT_ONLY.includes(c);
+      const isPersonal = isUniversal || isAdultOnly;
 
       if (selectedMember) {
-        // Member selected: only personal cats allowed
-        if (!isPersonal) return false;
+        // Member selected
+        // 1. Check if this category applies to this member (age check)
+        const memberObj = familyMembers.find(m => `${m.nombres} ${m.apellidos}`.trim() === selectedMember);
+        const requiredForMember = getRequiredCatsForMember(memberObj);
 
-        // Check if uploaded by this member
+        if (!requiredForMember.includes(c)) return false;
+
+        // 2. Check if already uploaded
         const uploaded = docs.some(d => d.category === c && d.family_member_name === selectedMember);
         return !uploaded;
       } else {
         // Main applicant
-        // If personal, check if uploaded by Main (empty name)
         if (isPersonal) {
+          // Main is always adult
+          const requiredForMain = [...CATS_UNIVERSAL, ...CATS_ADULT_ONLY];
+          if (!requiredForMain.includes(c)) return false;
+
           const uploaded = docs.some(d => d.category === c && !d.family_member_name);
           return !uploaded;
         }
 
-        // If shared, check if uploaded by anyone (or just Main)
+        // Shared
         const uploaded = docs.some(d => d.category === c);
         return !uploaded;
       }
     });
-  }, [cats, docs, selectedMember]);
+  }, [cats, docs, selectedMember, familyMembers, getRequiredCatsForMember]);
 
   const progress = useMemo(() => {
     if (!cats.length) return 0;
 
-    const sharedCats = cats.filter(c => !PERSONAL_CATS.includes(c));
-    const personalCats = cats.filter(c => PERSONAL_CATS.includes(c));
+    const sharedCats = cats.filter(c => !CATS_UNIVERSAL.includes(c) && !CATS_ADULT_ONLY.includes(c));
 
-    // Total required = Shared + (Personal * (1 + familyMembers.length))
-    const totalRequired = sharedCats.length + (personalCats.length * (1 + familyMembers.length));
+    // Calculate total required slots
+    let totalRequired = sharedCats.length; // Shared docs
+
+    // Main Applicant (Adult)
+    totalRequired += (CATS_UNIVERSAL.length + CATS_ADULT_ONLY.length);
+
+    // Family Members
+    familyMembers.forEach(m => {
+      totalRequired += getRequiredCatsForMember(m).length;
+    });
+
     if (totalRequired === 0) return 0;
 
     // Count uploaded shared
@@ -123,18 +168,20 @@ export default function ClientPortal() {
     let uploadedPersonal = 0;
 
     // For Main
-    uploadedPersonal += personalCats.filter(c => docs.some(d => d.category === c && !d.family_member_name)).length;
+    const mainReqs = [...CATS_UNIVERSAL, ...CATS_ADULT_ONLY];
+    uploadedPersonal += mainReqs.filter(c => docs.some(d => d.category === c && !d.family_member_name)).length;
 
     // For Members
     familyMembers.forEach(m => {
       const name = `${m.nombres} ${m.apellidos}`.trim();
-      uploadedPersonal += personalCats.filter(c => docs.some(d => d.category === c && d.family_member_name === name)).length;
+      const memberReqs = getRequiredCatsForMember(m);
+      uploadedPersonal += memberReqs.filter(c => docs.some(d => d.category === c && d.family_member_name === name)).length;
     });
 
     const totalCompleted = uploadedShared + uploadedPersonal;
 
     return Math.round((totalCompleted / totalRequired) * 100);
-  }, [cats, docs, familyMembers]);
+  }, [cats, docs, familyMembers, getRequiredCatsForMember]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -291,8 +338,16 @@ export default function ClientPortal() {
 
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <motion.div {...fadeUp}>
-          <h1 className="text-3xl font-bold text-xiomara-navy">Portal del Cliente</h1>
-          <p className="text-sm text-ink-600 mt-1">Sube tus documentos requeridos y monitorea su revisión.</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold text-xiomara-navy">Portal del Cliente</h1>
+            <Button variant="ghost" size="icon" onClick={loadAll} className="h-8 w-8 text-ink-400 hover:text-xiomara-sky" title="Recargar datos">
+              <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            </Button>
+          </div>
+          <p className="text-sm text-ink-600 mt-1">
+            Sube tus documentos requeridos y monitorea su revisión.
+            {familyMembers.length > 0 && <span className="ml-2 bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full text-xs font-medium">{familyMembers.length} familiares detectados</span>}
+          </p>
           <div className="mt-2 inline-flex items-center gap-2 text-xs text-ink-500">
             <ShieldCheck size={14} className="text-emerald-600" /> Cifrado en tránsito · Revisiones internas seguras
           </div>
@@ -462,7 +517,7 @@ export default function ClientPortal() {
                     <div>
                       <h4 className="text-sm font-semibold text-xiomara-navy mb-2">Documentos Generales</h4>
                       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                        {cats.filter(c => !PERSONAL_CATS.includes(c)).map(c => {
+                        {cats.filter(c => !CATS_UNIVERSAL.includes(c) && !CATS_ADULT_ONLY.includes(c)).map(c => {
                           const subidos = docs.filter(d => d.category === c);
                           const s = subidos.some(d => d.status === "rejected") ? "rejected" :
                             subidos.some(d => d.status === "pending") ? "pending" :
@@ -481,7 +536,7 @@ export default function ClientPortal() {
                     <div>
                       <h4 className="text-sm font-semibold text-xiomara-navy mb-2">Solicitante Principal</h4>
                       <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                        {cats.filter(c => PERSONAL_CATS.includes(c)).map(c => {
+                        {[...CATS_UNIVERSAL, ...CATS_ADULT_ONLY].map(c => {
                           const subidos = docs.filter(d => d.category === c && !d.family_member_name);
                           const s = subidos.some(d => d.status === "rejected") ? "rejected" :
                             subidos.some(d => d.status === "pending") ? "pending" :
@@ -497,28 +552,41 @@ export default function ClientPortal() {
                     </div>
 
                     {/* Family Members Personal Docs */}
-                    {familyMembers.map((m, i) => {
-                      const name = `${m.nombres} ${m.apellidos}`.trim();
-                      return (
-                        <div key={i}>
-                          <h4 className="text-sm font-semibold text-xiomara-navy mb-2">{name} ({m.parentesco})</h4>
-                          <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                            {cats.filter(c => PERSONAL_CATS.includes(c)).map(c => {
-                              const subidos = docs.filter(d => d.category === c && d.family_member_name === name);
-                              const s = subidos.some(d => d.status === "rejected") ? "rejected" :
-                                subidos.some(d => d.status === "pending") ? "pending" :
-                                  subidos.length ? "approved" : null;
-                              return (
-                                <div key={c} className="flex items-center justify-between px-3 py-2 rounded-xl border bg-white">
-                                  <span className="text-sm truncate mr-2" title={c}>{c}</span>
-                                  {s ? statusPill(s) : <span className="text-xs text-ink-400">Pendiente</span>}
-                                </div>
-                              );
-                            })}
+                    {familyMembers.length > 0 ? (
+                      familyMembers.map((m, i) => {
+                        const name = `${m.nombres} ${m.apellidos}`.trim();
+                        const requiredForMember = getRequiredCatsForMember(m);
+
+                        return (
+                          <div key={i}>
+                            <h4 className="text-sm font-semibold text-xiomara-navy mb-2">{name} ({m.parentesco})</h4>
+                            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                              {requiredForMember.map(c => {
+                                const subidos = docs.filter(d => d.category === c && d.family_member_name === name);
+                                const s = subidos.some(d => d.status === "rejected") ? "rejected" :
+                                  subidos.some(d => d.status === "pending") ? "pending" :
+                                    subidos.length ? "approved" : null;
+                                return (
+                                  <div key={c} className="flex items-center justify-between px-3 py-2 rounded-xl border bg-white">
+                                    <span className="text-sm truncate mr-2" title={c}>{c}</span>
+                                    {s ? statusPill(s) : <span className="text-xs text-ink-400">Pendiente</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-center mt-4">
+                        <p className="text-sm text-ink-500 mb-1">¿Viajas con tu familia?</p>
+                        <p className="text-xs text-ink-400 mb-3">No vemos miembros registrados en tu solicitud.</p>
+                        <a href="/formulario" className="inline-flex items-center gap-1 text-sm font-semibold text-xiomara-sky hover:text-xiomara-pink transition-colors">
+                          Agrega a tu familia en el Formulario
+                          <ArrowRight size={14} />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

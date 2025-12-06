@@ -8,6 +8,7 @@ import {
   BarChart3, PieChart, Activity, UserCheck, FileCheck
 } from 'lucide-react'
 import { api } from '../../utils/api'
+import { toast } from 'sonner'
 
 export default function Dashboard() {
   const [stats, setStats] = useState({
@@ -23,11 +24,43 @@ export default function Dashboard() {
 
   const [recentClients, setRecentClients] = useState([])
   const [recentDocuments, setRecentDocuments] = useState([])
+  const [recentActivities, setRecentActivities] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadDashboardData()
   }, [])
+
+  const handleExport = async () => {
+    try {
+      const token = api.token;
+      if (!token) {
+        toast.error("No hay sesión activa");
+        return;
+      }
+
+      const response = await fetch(`${api.baseUrl}/api/v1/admin/export/dashboard`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error("Error al exportar");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'reporte_clientes.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Reporte exportado exitosamente");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar reporte");
+    }
+  }
 
   const loadDashboardData = async () => {
     setLoading(true)
@@ -81,6 +114,27 @@ export default function Dashboard() {
         date: new Date(a.created_at).toLocaleDateString('es-ES')
       })))
 
+      // Configurar actividades recientes para el feed
+      setRecentActivities(activities.map(a => {
+        let icon = Activity
+        let color = 'blue'
+
+        if (a.activity_type === 'user_registered') { icon = UserCheck; color = 'blue' }
+        else if (a.activity_type === 'document_approved') { icon = FileCheck; color = 'green' }
+        else if (a.activity_type === 'document_rejected') { icon = AlertTriangle; color = 'red' }
+        else if (a.activity_type === 'document_uploaded') { icon = FileText; color = 'yellow' }
+        else if (a.activity_type === 'client_updated') { icon = Edit; color = 'purple' }
+
+        return {
+          id: a.id,
+          title: a.title,
+          description: a.description,
+          time: new Date(a.created_at).toLocaleString('es-ES'),
+          icon,
+          color
+        }
+      }))
+
     } catch (error) {
       console.error('Error loading dashboard:', error)
       // Si hay error, mostrar datos vacíos en lugar de datos falsos
@@ -116,7 +170,9 @@ export default function Dashboard() {
               <p className="text-ink-600 mt-1">Bienvenido de vuelta, administrador</p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 px-4 h-10 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">
+              <button
+                onClick={handleExport}
+                className="inline-flex items-center gap-2 px-4 h-10 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">
                 <Download size={18} />
                 Exportar
               </button>
@@ -381,34 +437,22 @@ export default function Dashboard() {
           </div>
 
           <div className="space-y-4">
-            <ActivityItem
-              icon={UserCheck}
-              iconColor="blue"
-              title="Nuevo cliente registrado"
-              description="María González se registró en el sistema"
-              time="Hace 5 minutos"
-            />
-            <ActivityItem
-              icon={FileCheck}
-              iconColor="green"
-              title="Documento aprobado"
-              description="Pasaporte de Carlos Rodríguez fue aprobado"
-              time="Hace 15 minutos"
-            />
-            <ActivityItem
-              icon={AlertTriangle}
-              iconColor="red"
-              title="Documento rechazado"
-              description="Certificado Laboral de Ana Martínez requiere corrección"
-              time="Hace 1 hora"
-            />
-            <ActivityItem
-              icon={FileText}
-              iconColor="yellow"
-              title="Nuevo documento subido"
-              description="Luis Fernández subió Estados Financieros"
-              time="Hace 2 horas"
-            />
+            {recentActivities.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No hay actividad reciente
+              </div>
+            ) : (
+              recentActivities.map((activity) => (
+                <ActivityItem
+                  key={activity.id}
+                  icon={activity.icon}
+                  iconColor={activity.color}
+                  title={activity.title}
+                  description={activity.description}
+                  time={activity.time}
+                />
+              ))
+            )}
           </div>
         </motion.div>
       </div>

@@ -8,6 +8,8 @@ import {
 import { toast } from 'sonner'
 import { api } from '../../utils/api'
 
+import ClientDocumentsModal from '../../components/admin/ClientDocumentsModal'
+
 export default function Clients() {
   const [clients, setClients] = useState([])
   const [filteredClients, setFilteredClients] = useState([])
@@ -16,6 +18,7 @@ export default function Clients() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedClient, setSelectedClient] = useState(null)
   const [showDetails, setShowDetails] = useState(false)
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false)
 
   // Create Client Modal State
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -178,6 +181,37 @@ export default function Clients() {
     }
   }
 
+  const handleExport = async () => {
+    try {
+      const token = api.token;
+      if (!token) {
+        toast.error("No hay sesión activa");
+        return;
+      }
+
+      const response = await fetch(`${api.baseUrl}/api/v1/admin/export/dashboard`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error("Error al exportar");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'reporte_clientes.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success("Reporte exportado exitosamente");
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar reporte");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Header */}
@@ -237,7 +271,9 @@ export default function Clients() {
             </select>
 
             {/* Export Button */}
-            <button className="inline-flex items-center gap-2 px-6 h-12 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">
+            <button
+              onClick={handleExport}
+              className="inline-flex items-center gap-2 px-6 h-12 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all">
               <Download size={20} />
               Exportar
             </button>
@@ -510,7 +546,10 @@ export default function Clients() {
 
                 {/* Actions */}
                 <div className="flex gap-3 pt-4 border-t border-gray-200">
-                  <button className="flex-1 h-11 rounded-xl bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white font-semibold hover:shadow-lg transition-all">
+                  <button
+                    onClick={() => setShowDocumentsModal(true)}
+                    className="flex-1 h-11 rounded-xl bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white font-semibold hover:shadow-lg transition-all"
+                  >
                     Ver Documentos
                   </button>
                   <button className="flex-1 h-11 rounded-xl border-2 border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-all">
@@ -522,6 +561,15 @@ export default function Clients() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Client Documents Modal */}
+      {selectedClient && (
+        <ClientDocumentsModal
+          client={selectedClient}
+          isOpen={showDocumentsModal}
+          onClose={() => setShowDocumentsModal(false)}
+        />
+      )}
 
       {/* Create Client Modal */}
       <AnimatePresence>
@@ -679,7 +727,7 @@ export default function Clients() {
         )}
       </AnimatePresence>
 
-    </div>
+    </div >
   )
 }
 

@@ -183,7 +183,9 @@ export default function Reports() {
                                 <option value="quarter">Último trimestre</option>
                                 <option value="year">Último año</option>
                             </select>
-                            <button className="inline-flex items-center gap-2 px-6 h-10 rounded-xl bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white font-semibold hover:shadow-lg transition-all">
+                            <button
+                                onClick={() => window.print()}
+                                className="inline-flex items-center gap-2 px-6 h-10 rounded-xl bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white font-semibold hover:shadow-lg transition-all">
                                 <Download size={18} />
                                 Exportar PDF
                             </button>

@@ -6,6 +6,7 @@ import {
   ZoomIn, RotateCw, X, Check, FileCheck, Loader2
 } from 'lucide-react'
 import { api } from '../../utils/api'
+import { toast } from 'sonner'
 
 export default function ReviewDocs() {
   const [customers, setCustomers] = useState([])
@@ -32,16 +33,21 @@ export default function ReviewDocs() {
   const loadCustomers = async () => {
     setLoading(true)
     try {
-      // Simulated data - replace with actual API call
-      const mockCustomers = [
-        { id: 1, name: 'María González', email: 'maria@example.com', pendingDocs: 3 },
-        { id: 2, name: 'Carlos Rodríguez', email: 'carlos@example.com', pendingDocs: 5 },
-        { id: 3, name: 'Ana Martínez', email: 'ana@example.com', pendingDocs: 1 },
-        { id: 4, name: 'Luis Fernández', email: 'luis@example.com', pendingDocs: 2 },
-      ]
-      setCustomers(mockCustomers)
-      if (mockCustomers.length > 0) {
-        setSelectedCustomer(mockCustomers[0])
+      const clientsData = await api.clients.getAll()
+
+      // Map backend data to frontend format
+      const formattedCustomers = clientsData.map(c => ({
+        id: c.id,
+        name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Sin nombre',
+        email: c.email,
+        pendingDocs: c.pending_documents || 0
+      }))
+
+      setCustomers(formattedCustomers)
+
+      // Select first customer if none selected
+      if (formattedCustomers.length > 0 && !selectedCustomer) {
+        setSelectedCustomer(formattedCustomers[0])
       }
     } catch (error) {
       console.error('Error loading customers:', error)
@@ -52,55 +58,26 @@ export default function ReviewDocs() {
 
   const loadDocuments = async (customerId) => {
     try {
-      // Simulated data - replace with actual API call
-      const mockDocs = [
-        {
-          id: 1,
-          category: 'Pasaporte',
-          original_name: 'pasaporte_maria.pdf',
-          status: 'pending',
-          uploaded_at: '2024-12-05T10:30:00',
-          size_bytes: 2048000,
-          admin_notes: '',
-          url: '/sample-doc.pdf'
-        },
-        {
-          id: 2,
-          category: 'DNI',
-          original_name: 'dni_frente.jpg',
-          status: 'pending',
-          uploaded_at: '2024-12-05T11:15:00',
-          size_bytes: 1024000,
-          admin_notes: '',
-          url: '/sample-doc.pdf'
-        },
-        {
-          id: 3,
-          category: 'Certificado Laboral',
-          original_name: 'certificado_trabajo.pdf',
-          status: 'approved',
-          uploaded_at: '2024-12-04T14:20:00',
-          size_bytes: 512000,
-          admin_notes: 'Documento válido y legible',
-          url: '/sample-doc.pdf'
-        },
-      ]
+      const docs = await api.clients.getDocuments(customerId)
 
       const filtered = filterStatus === 'all'
-        ? mockDocs
-        : mockDocs.filter(d => d.status === filterStatus)
+        ? docs
+        : docs.filter(d => d.status === filterStatus)
 
       setDocuments(filtered)
     } catch (error) {
       console.error('Error loading documents:', error)
+      setDocuments([])
     }
   }
 
   const handleReview = async (docId, status) => {
     setReviewing(true)
     try {
-      // Simulated API call - replace with actual
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await api.put(`/api/v1/admin/documents/${docId}`, {
+        status,
+        admin_notes: notes || (status === 'approved' ? 'Aprobado' : 'Requiere corrección')
+      })
 
       // Update local state
       setDocuments(prev => prev.map(doc =>
@@ -112,10 +89,8 @@ export default function ReviewDocs() {
       setNotes('')
       setSelectedDoc(null)
 
-      // Reload documents
-      if (selectedCustomer) {
-        await loadDocuments(selectedCustomer.id)
-      }
+      // Reload customers to update pending counts
+      loadCustomers()
     } catch (error) {
       console.error('Error reviewing document:', error)
     } finally {
@@ -155,6 +130,57 @@ export default function ReviewDocs() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const viewDoc = async (doc) => {
+    try {
+      const token = api.token;
+      if (!token) {
+        toast.error("No hay sesión activa");
+        return;
+      }
+      const response = await fetch(`${api.baseUrl}/api/v1/admin/documents/${doc.id}/download`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error("Error loading file");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo abrir el documento. Verifica que el archivo exista.");
+    }
+  }
+
+  const downloadDoc = async (doc) => {
+    try {
+      const token = api.token;
+      if (!token) {
+        toast.error("No hay sesión activa");
+        return;
+      }
+      const response = await fetch(`${api.baseUrl}/api/v1/admin/documents/${doc.id}/download`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) throw new Error("Download failed");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', doc.original_name);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al descargar el documento. Verifica que el archivo exista.");
+    }
   }
 
   const pendingCount = documents.filter(d => d.status === 'pending').length
@@ -209,14 +235,14 @@ export default function ReviewDocs() {
                         key={customer.id}
                         onClick={() => setSelectedCustomer(customer)}
                         className={`w-full text-left p-3 rounded-xl transition-all ${selectedCustomer?.id === customer.id
-                            ? 'bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white shadow-md'
-                            : 'hover:bg-gray-50'
+                          ? 'bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white shadow-md'
+                          : 'hover:bg-gray-50'
                           }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold shrink-0 ${selectedCustomer?.id === customer.id
-                              ? 'bg-white/20 text-white'
-                              : 'bg-gradient-to-br from-xiomara-sky to-xiomara-pink text-white'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-gradient-to-br from-xiomara-sky to-xiomara-pink text-white'
                             }`}>
                             {customer.name.charAt(0)}
                           </div>
@@ -229,8 +255,8 @@ export default function ReviewDocs() {
                           </div>
                           {customer.pendingDocs > 0 && (
                             <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${selectedCustomer?.id === customer.id
-                                ? 'bg-white/20 text-white'
-                                : 'bg-amber-100 text-amber-700'
+                              ? 'bg-white/20 text-white'
+                              : 'bg-amber-100 text-amber-700'
                               }`}>
                               {customer.pendingDocs}
                             </div>
@@ -285,6 +311,11 @@ export default function ReviewDocs() {
                                 {getStatusBadge(doc.status)}
                               </div>
                               <p className="text-sm text-gray-600 truncate">{doc.original_name}</p>
+                              {doc.family_member_name && (
+                                <span className="inline-block mt-1 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
+                                  {doc.family_member_name}
+                                </span>
+                              )}
                               <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                                 <span className="flex items-center gap-1">
                                   <Calendar size={14} />
@@ -305,14 +336,18 @@ export default function ReviewDocs() {
 
                           <div className="flex flex-col gap-2 shrink-0">
                             <button
-                              onClick={() => {
-                                setSelectedDoc(doc)
-                                setShowPreview(true)
-                              }}
+                              onClick={() => viewDoc(doc)}
                               className="inline-flex items-center gap-2 px-4 h-10 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all"
                             >
                               <Eye size={18} />
                               Ver
+                            </button>
+                            <button
+                              onClick={() => downloadDoc(doc)}
+                              className="inline-flex items-center gap-2 px-4 h-10 rounded-xl border-2 border-gray-300 bg-white text-gray-700 font-semibold hover:bg-gray-50 transition-all"
+                            >
+                              <Download size={18} />
+                              Bajar
                             </button>
                             {doc.status === 'pending' && (
                               <>
@@ -464,14 +499,12 @@ export default function ReviewDocs() {
                   <p className="text-sm text-gray-300">{selectedDoc.original_name}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a
-                    href={`${api.baseUrl}/api/v1/documents/${selectedDoc.id}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={() => downloadDoc(selectedDoc)}
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   >
                     <Download size={20} />
-                  </a>
+                  </button>
                   <button
                     onClick={() => setShowPreview(false)}
                     className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -488,15 +521,13 @@ export default function ReviewDocs() {
                   <p className="text-sm text-gray-500 mt-2">
                     {selectedDoc.original_name}
                   </p>
-                  <a
-                    href={`${api.baseUrl}/api/v1/documents/${selectedDoc.id}`}
-                    target="_blank"
-                    rel="noreferrer"
+                  <button
+                    onClick={() => downloadDoc(selectedDoc)}
                     className="inline-flex items-center gap-2 mt-4 px-6 h-11 rounded-xl bg-xiomara-sky text-white font-semibold hover:shadow-lg transition-all"
                   >
                     <Download size={18} />
                     Descargar para ver
-                  </a>
+                  </button>
                 </div>
               </div>
             </motion.div>
