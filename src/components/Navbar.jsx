@@ -4,13 +4,13 @@ import { LogIn, LogOut, Menu, X, ChevronDown, Calendar } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 /** Utilidades de estilo */
-const wrap        = "mx-auto w-full max-w-7xl px-4";
-const linkBase    = "relative inline-flex items-center gap-1 py-2 text-sm transition";
+const wrap = "mx-auto w-full max-w-7xl px-4";
+const linkBase = "relative inline-flex items-center gap-1 py-2 text-sm transition";
 const linkDefault = "text-ink-700 hover:text-xiomara-pink";
-const linkActive  = "text-xiomara-pink";
-const underline   = "after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-xiomara-pink after:transition-all group-hover:after:w-full";
-const chip        = "inline-flex w-9 h-9 items-center justify-center rounded-lg bg-xiomara-sky text-white";
-const btnPrimary  = "inline-flex items-center justify-center h-10 px-4 text-sm font-semibold text-white bg-xiomara-sky hover:bg-xiomara-pink transition rounded-lg";
+const linkActive = "text-xiomara-pink";
+const underline = "after:absolute after:left-0 after:-bottom-1 after:h-[2px] after:w-0 after:bg-xiomara-pink after:transition-all group-hover:after:w-full";
+const chip = "inline-flex w-9 h-9 items-center justify-center rounded-lg bg-xiomara-sky text-white";
+const btnPrimary = "inline-flex items-center justify-center h-10 px-4 text-sm font-semibold text-white bg-xiomara-sky hover:bg-xiomara-pink transition rounded-lg";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -20,7 +20,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   const serviciosRef = useRef(null);
-  const userMenuRef  = useRef(null);
+  const userMenuRef = useRef(null);
   const navigate = useNavigate();
   const { hash, pathname } = useLocation();
 
@@ -120,7 +120,7 @@ export default function Navbar() {
           </div>
 
           <NavLink to="/paquetes" className={navClass}>Paquetes</NavLink>
-          <NavLink to="/recursos" className={navClass}>Recursos</NavLink>
+          {user && <NavLink to="/recursos" className={navClass}>Recursos</NavLink>}
 
           {/* Atajos a screens de la landing */}
           <Link
@@ -209,17 +209,17 @@ export default function Navbar() {
                 <span className="text-sm font-medium">Servicios</span>
                 <ChevronDown size={18} className="transition group-open:rotate-180" />
               </summary>
-        
+
             </details>
 
             <NavLink to="/paquetes" className={navClass} onClick={closeMobile}>Paquetes</NavLink>
-            <NavLink to="/recursos" className={navClass} onClick={closeMobile}>Recursos</NavLink>
+            {user && <NavLink to="/recursos" className={navClass} onClick={closeMobile}>Recursos</NavLink>}
             <Link to="/#s4" className={`group ${linkBase} ${linkDefault} ${underline}`} onClick={closeMobile}>Canadá</Link>
             <Link to="/#s5" className={`group ${linkBase} ${linkDefault} ${underline}`} onClick={closeMobile}>España</Link>
 
             <div className="pt-2">
               <Link to="/#contacto" className="inline-flex items-center justify-center h-10 px-4 w-full text-sm gap-2 border-2 border-xiomara-navy text-xiomara-navy rounded-full hover:bg-xiomara-navy hover:text-white transition">
-                <Calendar size={16}/> Agenda tu asesoría
+                <Calendar size={16} /> Agenda tu asesoría
               </Link>
             </div>
 

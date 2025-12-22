@@ -141,6 +141,8 @@ export default function Clients() {
           phone: newClient.phone,
           destination_country: newClient.destination_country,
           visa_type: newClient.visa_type,
+          application_type: newClient.application_type,
+          family_members_count: newClient.family_members_count,
           status: 'pending',
           progress: 0
         },

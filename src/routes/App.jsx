@@ -40,7 +40,14 @@ export default function App() {
             {/* Páginas públicas */}
             <Route path="/servicios" element={<Services />} />
             <Route path="/paquetes" element={<Packages />} />
-            <Route path="/recursos" element={<Resources />} />
+            <Route
+              path="/recursos"
+              element={
+                <ProtectedRoute allow={["customer", "admin"]}>
+                  <Resources />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/login" element={<Login />} />
 
             {/* Admin */}

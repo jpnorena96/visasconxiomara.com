@@ -94,15 +94,16 @@ def delete_client(
 def get_all_clients(
     skip: int = 0,
     limit: int = 100,
-    status: str = None,
+    filter_status: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
 ):
     """Obtener todos los clientes (solo admin)"""
+    print(f"DEBUG: get_all_clients called. skip={skip}, limit={limit}, status={filter_status}")
     query = db.query(Client).join(User, Client.user_id == User.id)
     
-    if status:
-        query = query.filter(Client.status == status)
+    if filter_status:
+        query = query.filter(Client.status == filter_status)
     
     clients = query.offset(skip).limit(limit).all()
     

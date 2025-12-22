@@ -38,6 +38,11 @@ class IntakeForm(Base):
     # Datos de miembros de la familia (JSON string)
     family_members_data: Mapped[str | None] = mapped_column(Text)
     
+    # Datos extendidos (JSON string)
+    parents_data: Mapped[str | None] = mapped_column(Text)
+    education_data: Mapped[str | None] = mapped_column(Text)
+    work_data: Mapped[str | None] = mapped_column(Text)
+    
     # Metadata
     is_completed: Mapped[bool] = mapped_column(default=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime)

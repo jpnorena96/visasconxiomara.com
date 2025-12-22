@@ -16,14 +16,55 @@ const schema = z.object({
   fechaNacimiento: z.string().min(1, 'Requerido'),
   nacionalidad: z.string().min(1, 'Requerido'),
   pasaporte: z.string().min(3, 'Requerido'),
-  nivelEducativo: z.string().optional(),
-  institucion: z.string().optional(),
-  ocupacion: z.string().optional(),
-  compania: z.string().optional(),
-  padreNombre: z.string().optional(),
-  madreNombre: z.string().optional(),
-  viajes: z.string().optional(),
-  familiaresExterior: z.string().optional(),
+
+  // Arrays
+  educationHistory: z.array(z.object({
+    nivel: z.string().min(1, 'Requerido'),
+    institucion: z.string().min(1, 'Requerido'),
+    desde: z.string().optional(),
+    hasta: z.string().optional(),
+  })).optional(),
+  workHistory: z.array(z.object({
+    empresa: z.string().min(1, 'Requerido'),
+    cargo: z.string().min(1, 'Requerido'),
+    desde: z.string().optional(),
+    hasta: z.string().optional(),
+  })).optional(),
+
+  // Parents
+  padre: z.object({
+    nombres: z.string().optional(),
+    fechaNacimiento: z.string().optional(),
+    lugarNacimiento: z.string().optional(),
+    ocupacion: z.string().optional(),
+    fallecido: z.boolean().optional(),
+    fechaDefuncion: z.string().optional()
+  }).optional(),
+  madre: z.object({
+    nombres: z.string().optional(),
+    fechaNacimiento: z.string().optional(),
+    lugarNacimiento: z.string().optional(),
+    ocupacion: z.string().optional(),
+    fallecido: z.boolean().optional(),
+    fechaDefuncion: z.string().optional()
+  }).optional(),
+
+  // Arrays - New Dynamic Sections
+  travelHistory: z.array(z.object({
+    pais: z.string().min(1, 'Requerido'),
+    motivo: z.string().optional(),
+    fechaEntrada: z.string().optional(),
+    fechaSalida: z.string().optional()
+  })).optional(),
+
+  relativesHistory: z.array(z.object({
+    nombre: z.string().min(1, 'Requerido'),
+    parentesco: z.string().min(1, 'Requerido'),
+    direccion: z.string().optional(),
+    estatus: z.string().optional()
+  })).optional(),
+
+  // Legacy/Other
   familyMembers: z.array(z.object({
     nombres: z.string().min(1, 'Requerido'),
     apellidos: z.string().min(1, 'Requerido'),
@@ -48,10 +89,11 @@ const steps = [
 export default function IntakeForm() {
   const methods = useForm({ resolver: zodResolver(schema), defaultValues: { familyMembers: [] } })
   const { handleSubmit, register, formState: { errors }, watch, reset, control } = methods
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "familyMembers"
-  });
+  const { fields: familyFields, append: appendFamily, remove: removeFamily } = useFieldArray({ control, name: "familyMembers" });
+  const { fields: eduFields, append: appendEdu, remove: removeEdu } = useFieldArray({ control, name: "educationHistory" });
+  const { fields: workFields, append: appendWork, remove: removeWork } = useFieldArray({ control, name: "workHistory" });
+  const { fields: travelFields, append: appendTravel, remove: removeTravel } = useFieldArray({ control, name: "travelHistory" });
+  const { fields: relativeFields, append: appendRelative, remove: removeRelative } = useFieldArray({ control, name: "relativesHistory" });
 
   const [step, setStep] = React.useState(0)
   const [completedSteps, setCompletedSteps] = React.useState(new Set())
@@ -81,10 +123,14 @@ export default function IntakeForm() {
     try {
       const formData = await api.forms.getMy()
       if (formData) {
-        let members = []
-        try {
-          members = formData.family_members_data ? JSON.parse(formData.family_members_data) : []
-        } catch (e) { }
+        let family = [], edu = [], work = [], parents = {}, travel = [], relatives = [];
+        try { family = formData.family_members_data ? JSON.parse(formData.family_members_data) : [] } catch (e) { }
+        try { edu = formData.education_data ? JSON.parse(formData.education_data) : [] } catch (e) { }
+        try { work = formData.work_data ? JSON.parse(formData.work_data) : [] } catch (e) { }
+        try { parents = formData.parents_data ? JSON.parse(formData.parents_data) : {} } catch (e) { }
+
+        try { travel = formData.viajes && formData.viajes.startsWith('[') ? JSON.parse(formData.viajes) : [] } catch (e) { }
+        try { relatives = formData.familiares_exterior && formData.familiares_exterior.startsWith('[') ? JSON.parse(formData.familiares_exterior) : [] } catch (e) { }
 
         reset({
           apellidos: formData.apellidos || '',
@@ -92,15 +138,15 @@ export default function IntakeForm() {
           fechaNacimiento: formData.fecha_nacimiento || '',
           nacionalidad: formData.nacionalidad || '',
           pasaporte: formData.pasaporte || '',
-          nivelEducativo: formData.nivel_educativo || '',
-          institucion: formData.institucion || '',
-          ocupacion: formData.ocupacion || '',
-          compania: formData.compania || '',
-          padreNombre: formData.padre_nombre || '',
-          madreNombre: formData.madre_nombre || '',
-          viajes: formData.viajes || '',
-          familiaresExterior: formData.familiares_exterior || '',
-          familyMembers: members
+
+          educationHistory: edu,
+          workHistory: work,
+          travelHistory: travel,
+          relativesHistory: relatives,
+
+          padre: parents.padre || {},
+          madre: parents.madre || {},
+          familyMembers: family
         })
       }
     } catch (error) {
@@ -121,14 +167,13 @@ export default function IntakeForm() {
         fecha_nacimiento: data.fechaNacimiento,
         nacionalidad: data.nacionalidad,
         pasaporte: data.pasaporte,
-        nivel_educativo: data.nivelEducativo,
-        institucion: data.institucion,
-        ocupacion: data.ocupacion,
-        compania: data.compania,
-        padre_nombre: data.padreNombre,
-        madre_nombre: data.madreNombre,
-        viajes: data.viajes,
-        familiares_exterior: data.familiaresExterior,
+
+        education_data: JSON.stringify(data.educationHistory || []),
+        work_data: JSON.stringify(data.workHistory || []),
+        parents_data: JSON.stringify({ padre: data.padre, madre: data.madre }),
+
+        viajes: JSON.stringify(data.travelHistory || []),
+        familiares_exterior: JSON.stringify(data.relativesHistory || []),
         family_members_data: JSON.stringify(data.familyMembers || []),
         is_completed: isCompleted,
       }
@@ -350,47 +395,138 @@ export default function IntakeForm() {
                   )}
 
                   {step === 1 && (
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <SelectField
-                        label="Nivel Educativo Más Alto"
-                        name="nivelEducativo"
-                        register={register}
-                        errors={errors}
-                        options={[
-                          { value: '', label: 'Seleccione...' },
-                          { value: 'secundaria', label: 'Secundaria' },
-                          { value: 'tecnico', label: 'Técnico' },
-                          { value: 'universitario', label: 'Universitario' },
-                          { value: 'posgrado', label: 'Posgrado' },
-                          { value: 'doctorado', label: 'Doctorado' },
-                        ]}
-                      />
-                      <Field
-                        label="Institución Educativa"
-                        name="institucion"
-                        register={register}
-                        errors={errors}
-                        placeholder="Nombre de la institución"
-                      />
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-xiomara-navy">Historial Educativo</h3>
+                        <button
+                          type="button"
+                          onClick={() => appendEdu({ nivel: '', institucion: '' })}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-xiomara-sky bg-xiomara-sky/10 rounded-lg hover:bg-xiomara-sky/20 transition-colors"
+                        >
+                          <Plus size={16} /> Agregar Institución
+                        </button>
+                      </div>
+
+                      {eduFields.map((field, index) => (
+                        <div key={field.id} className="relative bg-gray-50 p-6 rounded-xl border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => removeEdu(index)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <SelectField
+                              label="Nivel Educativo"
+                              name={`educationHistory.${index}.nivel`}
+                              register={register}
+                              errors={errors}
+                              options={[
+                                { value: '', label: 'Seleccione...' },
+                                { value: 'secundaria', label: 'Secundaria' },
+                                { value: 'tecnico', label: 'Técnico' },
+                                { value: 'universitario', label: 'Universitario' },
+                                { value: 'posgrado', label: 'Posgrado' },
+                              ]}
+                              required
+                            />
+                            <Field
+                              label="Institución"
+                              name={`educationHistory.${index}.institucion`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Nombre de la institución"
+                              required
+                            />
+                            <Field
+                              label="Fecha Inicio"
+                              name={`educationHistory.${index}.desde`}
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                            <Field
+                              label="Fecha Fin (Deje vacío si actual)"
+                              name={`educationHistory.${index}.hasta`}
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {eduFields.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          Agregue su historial educativo.
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {step === 2 && (
-                    <div className="grid md:grid-cols-2 gap-6">
-                      <Field
-                        label="Ocupación/Puesto Actual"
-                        name="ocupacion"
-                        register={register}
-                        errors={errors}
-                        placeholder="Ej: Ingeniero de Software"
-                      />
-                      <Field
-                        label="Compañía/Empleador"
-                        name="compania"
-                        register={register}
-                        errors={errors}
-                        placeholder="Nombre de la empresa"
-                      />
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-xiomara-navy">Experiencia Laboral</h3>
+                        <button
+                          type="button"
+                          onClick={() => appendWork({ empresa: '', cargo: '' })}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-xiomara-sky bg-xiomara-sky/10 rounded-lg hover:bg-xiomara-sky/20 transition-colors"
+                        >
+                          <Plus size={16} /> Agregar Trabajo
+                        </button>
+                      </div>
+
+                      {workFields.map((field, index) => (
+                        <div key={field.id} className="relative bg-gray-50 p-6 rounded-xl border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => removeWork(index)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <Field
+                              label="Empresa / Empleador"
+                              name={`workHistory.${index}.empresa`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Nombre de la empresa"
+                              required
+                            />
+                            <Field
+                              label="Cargo / Puesto"
+                              name={`workHistory.${index}.cargo`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Su cargo"
+                              required
+                            />
+                            <Field
+                              label="Fecha Inicio"
+                              name={`workHistory.${index}.desde`}
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                            <Field
+                              label="Fecha Fin (Deje vacío si actual)"
+                              name={`workHistory.${index}.hasta`}
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {workFields.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          Agregue su experiencia laboral reciente.
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -415,20 +551,111 @@ export default function IntakeForm() {
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-6">
-                        <Field
-                          label="Nombre Completo del Padre"
-                          name="padreNombre"
-                          register={register}
-                          errors={errors}
-                          placeholder="Nombres y apellidos"
-                        />
-                        <Field
-                          label="Nombre Completo de la Madre"
-                          name="madreNombre"
-                          register={register}
-                          errors={errors}
-                          placeholder="Nombres y apellidos"
-                        />
+                        {/* Padre */}
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                          <h4 className="font-semibold text-xiomara-navy mb-3">Información del Padre</h4>
+                          <div className="space-y-3">
+                            <Field
+                              label="Nombres Completos"
+                              name="padre.nombres"
+                              register={register}
+                              errors={errors}
+                              placeholder="Nombres y apellidos"
+                            />
+                            <Field
+                              label="Fecha de Nacimiento"
+                              name="padre.fechaNacimiento"
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                            <Field
+                              label="Lugar de Nacimiento"
+                              name="padre.lugarNacimiento"
+                              register={register}
+                              errors={errors}
+                              placeholder="Ciudad, País"
+                            />
+                            <Field
+                              label="Ocupación"
+                              name="padre.ocupacion"
+                              register={register}
+                              errors={errors}
+                              placeholder="Ocupación principal"
+                            />
+                            <div className="flex items-center gap-2 py-2">
+                              <input
+                                type="checkbox"
+                                {...register("padre.fallecido")}
+                                id="padreDead"
+                                className="w-4 h-4 text-xiomara-sky rounded border-gray-300 focus:ring-xiomara-sky"
+                              />
+                              <label htmlFor="padreDead" className="text-sm font-medium text-gray-700">¿Fallecido?</label>
+                            </div>
+                            {watch("padre.fallecido") && (
+                              <Field
+                                label="Fecha de Defunción"
+                                name="padre.fechaDefuncion"
+                                type="date"
+                                register={register}
+                                errors={errors}
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Madre */}
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                          <h4 className="font-semibold text-xiomara-navy mb-3">Información de la Madre</h4>
+                          <div className="space-y-3">
+                            <Field
+                              label="Nombres Completos"
+                              name="madre.nombres"
+                              register={register}
+                              errors={errors}
+                              placeholder="Nombres y apellidos"
+                            />
+                            <Field
+                              label="Fecha de Nacimiento"
+                              name="madre.fechaNacimiento"
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                            <Field
+                              label="Lugar de Nacimiento"
+                              name="madre.lugarNacimiento"
+                              register={register}
+                              errors={errors}
+                              placeholder="Ciudad, País"
+                            />
+                            <Field
+                              label="Ocupación"
+                              name="madre.ocupacion"
+                              register={register}
+                              errors={errors}
+                              placeholder="Ocupación principal"
+                            />
+                            <div className="flex items-center gap-2 py-2">
+                              <input
+                                type="checkbox"
+                                {...register("madre.fallecido")}
+                                id="madreDead"
+                                className="w-4 h-4 text-xiomara-sky rounded border-gray-300 focus:ring-xiomara-sky"
+                              />
+                              <label htmlFor="madreDead" className="text-sm font-medium text-gray-700">¿Fallecida?</label>
+                            </div>
+                            {watch("madre.fallecido") && (
+                              <Field
+                                label="Fecha de Defunción"
+                                name="madre.fechaDefuncion"
+                                type="date"
+                                register={register}
+                                errors={errors}
+                              />
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {isFamily && (
@@ -437,7 +664,7 @@ export default function IntakeForm() {
                             <h3 className="text-lg font-semibold text-xiomara-navy">Miembros del Grupo Familiar</h3>
                             <button
                               type="button"
-                              onClick={() => append({ nombres: '', apellidos: '', parentesco: '', edad: '' })}
+                              onClick={() => appendFamily({ nombres: '', apellidos: '', parentesco: '', fechaNacimiento: '', nacionalidad: '', pasaporte: '' })}
                               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-xiomara-sky bg-xiomara-sky/10 rounded-lg hover:bg-xiomara-sky/20 transition-colors"
                             >
                               <Plus size={16} />
@@ -446,7 +673,7 @@ export default function IntakeForm() {
                           </div>
 
                           <div className="space-y-4">
-                            {fields.map((field, index) => {
+                            {familyFields.map((field, index) => {
                               const dob = watch(`familyMembers.${index}.fechaNacimiento`);
                               const age = dob ? Math.floor((new Date() - new Date(dob)) / 31557600000) : 0;
                               const isMinor = age > 0 && age < 18;
@@ -455,7 +682,7 @@ export default function IntakeForm() {
                                 <div key={field.id} className="bg-gray-50 p-4 rounded-xl relative border border-gray-200">
                                   <button
                                     type="button"
-                                    onClick={() => remove(index)}
+                                    onClick={() => removeFamily(index)}
                                     className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition-colors"
                                   >
                                     <Trash2 size={18} />
@@ -527,7 +754,7 @@ export default function IntakeForm() {
                                 </div>
                               )
                             })}
-                            {fields.length === 0 && (
+                            {familyFields.length === 0 && (
                               <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
                                 No hay miembros agregados al grupo familiar.
                               </div>
@@ -539,38 +766,139 @@ export default function IntakeForm() {
                   )}
 
                   {step === 4 && (
-                    <div className="space-y-4">
-                      <TextAreaField
-                        label="Historial de Viajes Internacionales"
-                        name="viajes"
-                        register={register}
-                        errors={errors}
-                        rows={8}
-                        placeholder="Formato: PAÍS | AÑO | MOTIVO | FECHA ENTRADA | FECHA SALIDA&#10;&#10;Ejemplo:&#10;Estados Unidos | 2023 | Turismo | 2023-06-01 | 2023-06-20&#10;España | 2022 | Negocios | 2022-03-15 | 2022-03-25"
-                        helpText="Liste todos sus viajes internacionales de los últimos 10 años"
-                      />
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-xiomara-navy">Historial de Viajes Internacionales</h3>
+                        <button
+                          type="button"
+                          onClick={() => appendTravel({ pais: '', motivo: '' })}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-xiomara-sky bg-xiomara-sky/10 rounded-lg hover:bg-xiomara-sky/20 transition-colors"
+                        >
+                          <Plus size={16} /> Agregar Viaje
+                        </button>
+                      </div>
+
+                      {travelFields.map((field, index) => (
+                        <div key={field.id} className="relative bg-gray-50 p-6 rounded-xl border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => removeTravel(index)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <Field
+                              label="País"
+                              name={`travelHistory.${index}.pais`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Ej: Estados Unidos"
+                              required
+                            />
+                            <Field
+                              label="Motivo del Viaje"
+                              name={`travelHistory.${index}.motivo`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Ej: Turismo"
+                            />
+                            <Field
+                              label="Fecha Entrada"
+                              name={`travelHistory.${index}.fechaEntrada`}
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                            <Field
+                              label="Fecha Salida"
+                              name={`travelHistory.${index}.fechaSalida`}
+                              type="date"
+                              register={register}
+                              errors={errors}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {travelFields.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          Si ha viajado al extranjero en los últimos 10 años, agregue los registros aquí.
+                        </div>
+                      )}
                     </div>
                   )}
 
                   {step === 5 && (
                     <div className="space-y-6">
-                      <TextAreaField
-                        label="Familiares en Canadá o Estados Unidos"
-                        name="familiaresExterior"
-                        register={register}
-                        errors={errors}
-                        rows={4}
-                        placeholder="Nombre completo, relación familiar, dirección completa"
-                        helpText="Si tiene familiares residiendo en estos países, proporcione sus datos"
-                      />
-                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-xiomara-navy">Familiares en EE.UU. o Canadá</h3>
+                        <button
+                          type="button"
+                          onClick={() => appendRelative({ nombre: '', parentesco: '' })}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-xiomara-sky bg-xiomara-sky/10 rounded-lg hover:bg-xiomara-sky/20 transition-colors"
+                        >
+                          <Plus size={16} /> Agregar Familiar
+                        </button>
+                      </div>
+
+                      {relativeFields.map((field, index) => (
+                        <div key={field.id} className="relative bg-gray-50 p-6 rounded-xl border border-gray-200">
+                          <button
+                            type="button"
+                            onClick={() => removeRelative(index)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <Field
+                              label="Nombre Completo"
+                              name={`relativesHistory.${index}.nombre`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Nombres y apellidos"
+                              required
+                            />
+                            <Field
+                              label="Parentesco"
+                              name={`relativesHistory.${index}.parentesco`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Ej: Hermano, Tía"
+                              required
+                            />
+                            <Field
+                              label="Dirección Completa"
+                              name={`relativesHistory.${index}.direccion`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Dirección en el extranjero"
+                            />
+                            <Field
+                              label="Estatus Legal"
+                              name={`relativesHistory.${index}.estatus`}
+                              register={register}
+                              errors={errors}
+                              placeholder="Ej: Ciudadano, Residente, Visa Vigente"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      {relativeFields.length === 0 && (
+                        <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                          Si tiene familiares directos en EE.UU. o Canadá, agréguelos aquí.
+                        </div>
+                      )}
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-4">
                         <div className="flex gap-3">
                           <AlertCircle className="text-blue-600 shrink-0 mt-0.5" size={20} />
                           <div className="text-sm text-blue-900">
                             <p className="font-semibold mb-1">Información Adicional</p>
                             <p className="text-blue-700">
-                              Preguntas adicionales sobre visas anteriores, huellas dactilares,
-                              negaciones previas y residencia pueden ser habilitadas según el tipo de visa.
+                              Asegúrese de declarar correctamente a familiares inmediatos (Diferente grupo familiar) para evitar inconsistencias en su solicitud consular.
                             </p>
                           </div>
                         </div>
@@ -605,17 +933,92 @@ export default function IntakeForm() {
                         { key: 'pasaporte', label: 'Pasaporte' },
                       ]} />
 
-                      <SummarySection title="Educación y Trabajo" data={allData} fields={[
-                        { key: 'nivelEducativo', label: 'Nivel Educativo' },
-                        { key: 'institucion', label: 'Institución' },
-                        { key: 'ocupacion', label: 'Ocupación' },
-                        { key: 'compania', label: 'Compañía' },
-                      ]} />
+                      {/* Educación Summary */}
+                      {allData.educationHistory?.length > 0 && (
+                        <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mt-4">
+                          <h4 className="text-sm font-bold text-xiomara-navy mb-3 uppercase tracking-wide">Educación</h4>
+                          <div className="space-y-3">
+                            {allData.educationHistory.map((e, i) => (
+                              <div key={i} className="text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                <div className="font-semibold text-ink-700">{e.nivel} en {e.institucion}</div>
+                                <div className="text-xs text-ink-500">{e.desde} - {e.hasta || 'Actual'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                      <SummarySection title="Información Familiar" data={allData} fields={[
-                        { key: 'padreNombre', label: 'Padre' },
-                        { key: 'madreNombre', label: 'Madre' },
-                      ]} />
+                      {/* Trabajo Summary */}
+                      {allData.workHistory?.length > 0 && (
+                        <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mt-4">
+                          <h4 className="text-sm font-bold text-xiomara-navy mb-3 uppercase tracking-wide">Experiencia Laboral</h4>
+                          <div className="space-y-3">
+                            {allData.workHistory.map((w, i) => (
+                              <div key={i} className="text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                <div className="font-semibold text-ink-700">{w.cargo} en {w.empresa}</div>
+                                <div className="text-xs text-ink-500">{w.desde} - {w.hasta || 'Actual'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Padres Summary */}
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mt-4">
+                        <h4 className="text-sm font-bold text-xiomara-navy mb-3 uppercase tracking-wide">Padres</h4>
+                        <div className="grid md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="block text-xs font-bold text-gray-500">PADRE</span>
+                            {allData.padre?.nombres ? (
+                              <>
+                                <div className="font-semibold">{allData.padre.nombres}</div>
+                                <div className="text-xs text-gray-500">{allData.padre.fechaNacimiento} | {allData.padre.lugarNacimiento}</div>
+                                {allData.padre.fallecido && <span className="text-xs text-red-500 font-bold">Fallecido</span>}
+                              </>
+                            ) : <span className="text-gray-400">No registrado</span>}
+                          </div>
+                          <div>
+                            <span className="block text-xs font-bold text-gray-500">MADRE</span>
+                            {allData.madre?.nombres ? (
+                              <>
+                                <div className="font-semibold">{allData.madre.nombres}</div>
+                                <div className="text-xs text-gray-500">{allData.madre.fechaNacimiento} | {allData.madre.lugarNacimiento}</div>
+                                {allData.madre.fallecido && <span className="text-xs text-red-500 font-bold">Fallecida</span>}
+                              </>
+                            ) : <span className="text-gray-400">No registrada</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Travel Summary */}
+                      {allData.travelHistory?.length > 0 && (
+                        <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mt-4">
+                          <h4 className="text-sm font-bold text-xiomara-navy mb-3 uppercase tracking-wide">Viajes Internacionales</h4>
+                          <div className="space-y-3">
+                            {allData.travelHistory.map((t, i) => (
+                              <div key={i} className="text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                <div className="font-semibold text-ink-700">{t.pais} - {t.motivo}</div>
+                                <div className="text-xs text-ink-500">{t.fechaEntrada} a {t.fechaSalida}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Relatives Summary */}
+                      {allData.relativesHistory?.length > 0 && (
+                        <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mt-4">
+                          <h4 className="text-sm font-bold text-xiomara-navy mb-3 uppercase tracking-wide">Familiares en Exterior</h4>
+                          <div className="space-y-3">
+                            {allData.relativesHistory.map((r, i) => (
+                              <div key={i} className="text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                <div className="font-semibold text-ink-700">{r.nombre} ({r.parentesco})</div>
+                                <div className="text-xs text-ink-500">{r.estatus || 'Estatus no especificado'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {isFamily && allData.familyMembers && allData.familyMembers.length > 0 && (
                         <div className="bg-white border-2 border-gray-200 rounded-xl p-5 mt-4">

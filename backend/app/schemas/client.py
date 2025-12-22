@@ -49,4 +49,4 @@ class ClientResponse(ClientBase):
 
 class ClientWithUser(ClientResponse):
     """Client response with user email"""
-    email: str
+    email: Optional[str]

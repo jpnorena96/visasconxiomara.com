@@ -31,6 +31,11 @@ class IntakeFormBase(BaseModel):
     
     # Datos de miembros de la familia
     family_members_data: Optional[str] = None
+    
+    # Datos extendidos
+    parents_data: Optional[str] = None
+    education_data: Optional[str] = None
+    work_data: Optional[str] = None
 
 class IntakeFormCreate(IntakeFormBase):
     is_completed: bool = False

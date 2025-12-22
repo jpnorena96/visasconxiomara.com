@@ -5,9 +5,16 @@ from app.api.v1 import auth, documents, me, admin, users, clients, forms, catego
 
 app = FastAPI(title=settings.APP_NAME)
 
+origins = [o.strip() for o in settings.CORS_ORIGINS.split(',') if o]
+# Ensure development frontend is allowed even if not in .env
+dev_origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
+for origin in dev_origins:
+    if origin not in origins:
+        origins.append(origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in settings.CORS_ORIGINS.split(',') if o],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
