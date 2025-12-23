@@ -3,34 +3,58 @@ Script completo de inicialización del backend de Xiomara
 Ejecutar con: python init_backend.py
 """
 import sys
+import time
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.security import hash_password
 
 def create_database():
-    """Crea la base de datos si no existe"""
-    db_uri_without_db = settings.DB_URI.rsplit('/', 1)[0]
-    
-    print(f"🔌 Conectando a MySQL en {settings.DB_HOST}:{settings.DB_PORT}...")
-    
+    """Crea la base de datos si no existe, o verifica conexión si ya existe"""
+    print(f"🔌 Intentando conectar a MySQL en {settings.DB_HOST}:{settings.DB_PORT}...")
+
+    # 1. Intentar conectar directamente a la base de datos objetivo
+    # Esto es ideal para entornos como Easypanel donde la DB ya está creada
     try:
-        engine = create_engine(db_uri_without_db, isolation_level="AUTOCOMMIT")
-        
+        engine = create_engine(settings.DB_URI)
         with engine.connect() as conn:
-            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {settings.DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
-            print(f"✅ Base de datos '{settings.DB_NAME}' creada o ya existe")
-            
+            print(f"✅ Conexión exitosa a la base de datos '{settings.DB_NAME}'")
         engine.dispose()
         return True
+    except Exception as e:
+        print(f"⚠️  No se pudo conectar directamente a '{settings.DB_NAME}': {e}")
+        print("   Intentando crear la base de datos...")
+
+    # 2. Si falla, intentar conectarse sin DB seleccionada y crearla
+    # Esto funciona si tenemos permisos de root o similares
+    db_uri_without_db = settings.DB_URI.rsplit('/', 1)[0]
+    
+    try:
+        # Reintentos por si MySQL está despertando
+        max_retries = 5
+        for i in range(max_retries):
+            try:
+                engine = create_engine(db_uri_without_db, isolation_level="AUTOCOMMIT")
+                with engine.connect() as conn:
+                    conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {settings.DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+                    print(f"✅ Base de datos '{settings.DB_NAME}' asegurada")
+                engine.dispose()
+                return True
+            except Exception as e_retry:
+                if i < max_retries - 1:
+                    print(f"   ⏳ Esperando a MySQL ({i+1}/{max_retries})...")
+                    time.sleep(3)
+                else:
+                    raise e_retry
         
     except Exception as e:
-        print(f"❌ Error al crear la base de datos: {e}")
+        print(f"❌ Error crítico al crear la base de datos: {e}")
+        print("   Si estás en un hosting compartido (Easypanel), verifica que la DB ya exista y las credenciales sean correctas.")
         return False
 
 def create_tables():
     """Crea las tablas usando SQLAlchemy"""
-    print(f"\n📋 Creando tablas en la base de datos '{settings.DB_NAME}'...")
+    print(f"\n📋 Verificando/Creando tablas en '{settings.DB_NAME}'...")
     
     try:
         from app.core.db import engine, Base
@@ -40,10 +64,7 @@ def create_tables():
         # Crear todas las tablas
         Base.metadata.create_all(bind=engine)
         
-        print("✅ Tablas creadas exitosamente:")
-        for table in Base.metadata.sorted_tables:
-            print(f"   - {table.name}")
-            
+        print("✅ Esquema de tablas sincronizado exitosamente")
         return True
         
     except Exception as e:
@@ -52,7 +73,7 @@ def create_tables():
 
 def seed_admin_user():
     """Crea un usuario administrador por defecto"""
-    print("\n👤 Creando usuario administrador...")
+    print("\n👤 Verificando usuario administrador...")
     
     try:
         from app.core.db import engine
@@ -63,7 +84,7 @@ def seed_admin_user():
             existing_admin = session.query(User).filter(User.email == "admin@xiomara.com").first()
             
             if existing_admin:
-                print("⚠️  Usuario admin ya existe")
+                print("   ✅ Usuario admin ya existe")
                 return True
             
             # Crear nuevo admin
@@ -76,9 +97,7 @@ def seed_admin_user():
             session.add(admin)
             session.commit()
             
-            print("✅ Usuario administrador creado:")
-            print("   Email: admin@xiomara.com")
-            print("   Password: admin123")
+            print("   ✅ Usuario administrador creado (admin@xiomara.com / admin123)")
             print("   ⚠️  CAMBIA ESTA CONTRASEÑA EN PRODUCCIÓN")
             
         return True
@@ -89,7 +108,7 @@ def seed_admin_user():
 
 def seed_categories():
     """Crea las categorías de documentos predeterminadas"""
-    print("\n📋 Poblando categorías de documentos...")
+    print("\n📋 Verificando categorías de documentos...")
     
     categories_data = [
         {"name": "Pasaporte", "description": "Copia del pasaporte vigente", "is_required": True, "display_order": 1},
@@ -113,7 +132,7 @@ def seed_categories():
             existing_count = session.query(Category).count()
             
             if existing_count > 0:
-                print(f"⚠️  Ya existen {existing_count} categorías")
+                print(f"   ✅ Ya existen {existing_count} categorías")
                 return True
             
             # Crear nuevas categorías
@@ -123,7 +142,7 @@ def seed_categories():
             
             session.commit()
             
-            print(f"✅ {len(categories_data)} categorías creadas exitosamente")
+            print(f"   ✅ {len(categories_data)} categorías iniciales creadas")
             
         return True
         
@@ -131,98 +150,29 @@ def seed_categories():
         print(f"❌ Error al crear categorías: {e}")
         return False
 
-def seed_test_customer():
-    """Crea un usuario de prueba tipo customer"""
-    print("\n👤 Creando usuario de prueba (customer)...")
-    
-    try:
-        from app.core.db import engine
-        from app.models.user import User
-        from app.models.client import Client
-        
-        with Session(engine) as session:
-            # Verificar si ya existe
-            existing_customer = session.query(User).filter(User.email == "test@example.com").first()
-            
-            if existing_customer:
-                print("⚠️  Usuario de prueba ya existe")
-                return True
-            
-            # Crear nuevo customer
-            customer = User(
-                email="test@example.com",
-                hashed_password=hash_password("test123"),
-                role="customer",
-                is_active=True
-            )
-            session.add(customer)
-            session.flush()  # Para obtener el ID
-            
-            # Crear perfil de cliente
-            client_profile = Client(
-                user_id=customer.id,
-                first_name="María",
-                last_name="González",
-                phone="+57 300 123 4567",
-                destination_country="Estados Unidos",
-                visa_type="Turista B1/B2",
-                status="active",
-                progress=45,
-                notes="Cliente de prueba para desarrollo"
-            )
-            session.add(client_profile)
-            session.commit()
-            
-            print("✅ Usuario de prueba creado:")
-            print("   Email: test@example.com")
-            print("   Password: test123")
-            print("   Rol: customer")
-            
-        return True
-        
-    except Exception as e:
-        print(f"❌ Error al crear usuario de prueba: {e}")
-        return False
-
 def main():
     print("=" * 70)
-    print("🚀 INICIALIZACIÓN COMPLETA DEL BACKEND - XIOMARA")
+    print("🚀 INICIALIZANDO BACKEND (AUTO-DEPLOY)")
     print("=" * 70)
     
-    # Paso 1: Crear la base de datos
+    # Paso 1: Base de datos
     if not create_database():
-        sys.exit(1)
+        # Si falla esto es crítico, pero en algunos envs la DB ya existe y el check falló falsamente
+        # Intentamos seguir, si falla create_tables ahí sí nos detenemos
+        print("⚠️ Advertencia en paso de BD, intentando continuar...")
     
-    # Paso 2: Crear las tablas
+    # Paso 2: Crear las tablas (Crítico)
     if not create_tables():
+        print("❌ Fallo crítico al crear tablas. Abortando.")
         sys.exit(1)
     
-    # Paso 3: Crear usuario admin
-    if not seed_admin_user():
-        sys.exit(1)
-    
-    # Paso 4: Poblar categorías
-    if not seed_categories():
-        sys.exit(1)
-    
-    # Paso 5: Crear usuario de prueba
-    if not seed_test_customer():
-        sys.exit(1)
+    # Paso 3: Datos semilla (Opcionales pero recomendados)
+    seed_admin_user()
+    seed_categories()
     
     print("\n" + "=" * 70)
-    print("✨ ¡Inicialización completada exitosamente!")
+    print("✨ INICIALIZACIÓN COMPLETADA")
     print("=" * 70)
-    print("\n📊 Resumen:")
-    print("   ✅ Base de datos creada")
-    print("   ✅ 6 tablas creadas (users, clients, documents, intake_forms, categories, activities)")
-    print("   ✅ Usuario admin creado (admin@xiomara.com / admin123)")
-    print("   ✅ Usuario de prueba creado (test@example.com / test123)")
-    print("   ✅ 10 categorías de documentos creadas")
-    print("\n💡 Próximos pasos:")
-    print("   1. Inicia el servidor: uvicorn app.main:app --reload")
-    print("   2. Accede a la documentación: http://localhost:8000/docs")
-    print("   3. Prueba el login con los usuarios creados")
-    print("\n⚠️  IMPORTANTE: Cambia las contraseñas por defecto en producción")
 
 if __name__ == "__main__":
     main()
