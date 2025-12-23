@@ -3,11 +3,16 @@ FROM node:22-alpine as build
 
 WORKDIR /app
 
+# Install dependencies first
 COPY package*.json ./
-# Clean install to avoid permission issues and ensure fresh deps
 RUN npm ci
 
+# Copy source code
 COPY . .
+
+# Fix permissions explicitly for vite binary
+RUN chmod +x node_modules/.bin/vite
+
 RUN npm run build
 
 # Stage 2: Serve

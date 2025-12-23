@@ -1,0 +1,9 @@
+node_modules
+.git
+.env
+.vscode
+dist
+build
+backend/__pycache__
+backend/.env
+backend/venv
