@@ -1,5 +1,5 @@
 import React from "react";
-import PlaneImg from "../assets/plane.png"; // PNG transparente
+import PlaneImg from "../assets/plane.svg"; // Ahora SVG
 
 export default function WhyAdvisorSection() {
   return (
