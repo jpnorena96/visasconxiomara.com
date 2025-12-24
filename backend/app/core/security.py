@@ -7,7 +7,8 @@ ALGO = "HS256"
 pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(p: str) -> str:
-    return pwd.hash(p)
+    # Bcrypt has a limit of 72 bytes. We prevent the crash by truncating.
+    return pwd.hash(p[:72])
 
 def verify_password(p: str, hp: str) -> bool:
     return pwd.verify(p, hp)
