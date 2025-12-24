@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import CanadaImg from "../assets/canada-toronto.png"; // imagen a color
 
 export default function CanadaVisaSection() {
@@ -34,8 +35,8 @@ export default function CanadaVisaSection() {
           </p>
 
           <div className="mt-5 motion-safe:animate-fadeIn [animation-delay:.3s]">
-            <a
-              href="/servicios/canada"
+            <Link
+              to="/paquetes"
               className="
                 inline-flex items-center gap-2 rounded-full
                 border-2 border-xiomara-navy text-xiomara-navy
@@ -46,14 +47,14 @@ export default function CanadaVisaSection() {
               "
             >
               VER OPCIONES
-            </a>
+            </Link>
           </div>
         </div>
 
         {/* === Círculo + Imagen a color === */}
         <div className="order-1 lg:order-2 relative flex justify-center lg:justify-end">
           {/* Círculo magenta (decorativo) */}
-  
+
           {/* Imagen a color (sin filtros) */}
           <img
             src={CanadaImg}

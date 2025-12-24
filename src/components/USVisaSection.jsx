@@ -1,16 +1,17 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import UsImg from "../assets/usa-ny.png"; // Usa una imagen vertical o tipo recorte alto
 
 export default function USVisaSection() {
   return (
     <section className="relative h-screen overflow-hidden bg-white flex flex-col justify-center">
       <div className="mx-auto w-full max-w-7xl px-6 lg:px-12 flex flex-col-reverse lg:flex-row items-center justify-center gap-10">
-        
+
         {/* === IMAGEN IZQUIERDA (más grande, centrada verticalmente) === */}
         <div className="relative flex justify-center lg:justify-start w-full lg:w-1/2 motion-safe:animate-fadeIn [animation-delay:.1s]">
           {/* Círculo magenta decorativo detrás */}
-  
-          
+
+
           {/* Imagen principal */}
           <img
             src={UsImg}
@@ -46,8 +47,8 @@ export default function USVisaSection() {
 
           {/* CTA */}
           <div className="mt-6">
-            <a
-              href="/servicios/usa"
+            <Link
+              to="/paquetes"
               className="
                 inline-flex items-center gap-2 rounded-full
                 border-2 border-xiomara-navy text-xiomara-navy
@@ -58,7 +59,7 @@ export default function USVisaSection() {
               "
             >
               VER OPCIONES
-            </a>
+            </Link>
           </div>
         </div>
       </div>

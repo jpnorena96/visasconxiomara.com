@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import SpainImg from "../assets/spain-sevilla.png"; // Imagen a color original
 
 export default function SpainVisaSection() {
@@ -14,7 +15,7 @@ export default function SpainVisaSection() {
       <div className="flex-1 grid lg:grid-cols-2 gap-8 items-center max-w-7xl w-full mx-auto px-4 py-6 lg:py-8">
         {/* ==== LADO IZQUIERDO: CÍRCULO + IMAGEN (A COLOR ORIGINAL) ==== */}
         <div className="relative flex justify-center lg:justify-start">
-         
+
           {/* Imagen sin filtros, fiel al original */}
           <img
             src={SpainImg}
@@ -66,8 +67,8 @@ export default function SpainVisaSection() {
           </p>
 
           <div className="mt-6 motion-safe:animate-fadeIn [animation-delay:.35s]">
-            <a
-              href="/servicios/espana"
+            <Link
+              to="/paquetes"
               className="
                 inline-flex items-center gap-2 rounded-full
                 border-2 border-xiomara-navy text-xiomara-navy
@@ -78,7 +79,7 @@ export default function SpainVisaSection() {
               "
             >
               VER OPCIONES
-            </a>
+            </Link>
           </div>
         </div>
       </div>
