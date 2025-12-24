@@ -22,7 +22,9 @@ import ClientPortal from "../pages/client/ClientPortal";
 import IntakeForm from "../pages/client/IntakeForm";
 
 // ✅ Protección de rutas
+// ✅ Protección de rutas
 import ProtectedRoute from "./ProtectedRoute";
+import WhatsAppButton from "../components/WhatsAppButton";
 
 export default function App() {
   return (
@@ -106,6 +108,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
+        <WhatsAppButton />
       </div>
     </AuthProvider>
   );
