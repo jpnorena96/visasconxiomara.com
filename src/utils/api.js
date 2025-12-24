@@ -1,5 +1,5 @@
 // src/utils/api.js
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://xiomara01-backend.ungd4w.easypanel.host';
 
 export const api = {
   setToken(token, persist = false) {
