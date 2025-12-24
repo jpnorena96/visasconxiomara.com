@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { LogIn, LogOut, Menu, X, ChevronDown, Calendar } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import Logo from "../assets/Logo.svg";
 
 /** Utilidades de estilo */
 const wrap = "mx-auto w-full max-w-7xl px-4";
@@ -80,8 +81,7 @@ export default function Navbar() {
       <div className={`${wrap} h-16 flex items-center justify-between`}>
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 text-xl font-extrabold text-xiomara-navy">
-          <span className={chip}>VX</span>
-          <span>Visas Con Xiomara</span>
+          <img src={Logo} alt="Visas Con Xiomara" className="h-12 w-auto" />
         </Link>
 
         {/* Navegación Desktop */}
