@@ -1,6 +1,6 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "../context/AuthContext";
+import { AuthProvider, useAuth } from "../context/AuthContext";
 import Navbar from "../components/Navbar";
 
 // ✅ Páginas públicas
@@ -108,8 +108,13 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <WhatsAppButton />
+        <ConditionalButton />
       </div>
     </AuthProvider>
   );
+}
+
+function ConditionalButton() {
+  const { user } = useAuth();
+  return !user ? <WhatsAppButton /> : null;
 }
