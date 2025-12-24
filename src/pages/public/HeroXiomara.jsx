@@ -22,30 +22,38 @@ export default function HeroXiomara() {
             aria-hidden
             className="
               absolute
-              left-1/2 -translate-x-1/2 md:left-[20%] md:translate-x-0
-              top-24 md:top-28
+              left-1/2 -translate-x-1/2 md:translate-x-0
+              md:left-16 lg:left-32
+              top-[15%] md:top-1/2 md:-translate-y-1/2
               flex flex-col items-center justify-center
-              p-3 sm:p-5 md:p-6
-              w-[220px] h-[220px] sm:w-[270px] sm:h-[270px] lg:w-[320px] lg:h-[320px]
-              rounded-full bg-xiomara-pink shadow-xl transition-all duration-300 ease-out
-              animate-slideInUp
+              p-6 sm:p-10
+              w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] lg:w-[550px] lg:h-[550px]
+              rounded-full bg-xiomara-pink shadow-2xl transition-all duration-500 ease-out
+              animate-slideInUp z-40
             "
           >
-            {/* Texto principal reducido */}
-            <h1 className="text-base sm:text-xl md:text-2xl font-bold uppercase text-white tracking-tight leading-snug text-center px-2">
+            {/* Texto principal aumentado */}
+            <h1 className="text-2xl sm:text-3xl lg:text-5xl font-bold uppercase text-white tracking-tight leading-none text-center px-4">
               Confianza que <br /> <span className="text-white">cruza fronteras.</span>
             </h1>
 
-            {/* Subtítulo más compacto */}
-            <p className="mt-2 text-[10px] sm:text-xs md:text-sm text-white max-w-[200px] mx-auto leading-tight text-center">
+            {/* Subtítulo más legible */}
+            <p className="mt-4 sm:mt-6 text-sm sm:text-base lg:text-lg text-white max-w-[260px] sm:max-w-[340px] mx-auto leading-tight text-center font-medium opacity-90">
               Asesoramos y guiamos tu proceso de visa con atención personalizada y soluciones efectivas.
             </p>
 
             {/* Botón proporcional */}
-            <div className="mt-3 sm:mt-4 md:mt-5">
+            <div className="mt-6 sm:mt-8">
               <Link
                 to="/servicios"
-                className="inline-flex items-center justify-center h-7 sm:h-8 px-3 sm:px-4 rounded-full text-xiomara-pink font-semibold bg-white hover:bg-white/90 transition shadow-xl border-2 border-white text-[10px] sm:text-xs"
+                className="
+                  inline-flex items-center justify-center 
+                  h-10 sm:h-12 px-6 sm:px-8 
+                  rounded-full bg-white text-xiomara-pink 
+                  font-bold text-sm sm:text-base tracking-wide
+                  hover:bg-gray-50 hover:scale-105 hover:shadow-lg
+                  transition-all duration-300 border-2 border-transparent
+                "
               >
                 CONÓCENOS
               </Link>
