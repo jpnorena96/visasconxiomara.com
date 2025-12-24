@@ -1,5 +1,5 @@
 import React from "react";
-import PlaneImg from "../assets/plane.svg"; // Ahora SVG
+import PlaneIcon from "./icons/PlaneIcon";
 
 export default function WhyAdvisorSection() {
   return (
@@ -9,18 +9,16 @@ export default function WhyAdvisorSection() {
         <div className="grid lg:grid-cols-2 gap-10 items-center max-w-6xl w-full">
           {/* Imagen (entrada + micro-interacción) */}
           <div className="flex justify-center">
-            <img
-              src={PlaneImg}
-              alt="Avión despegando"
+            <PlaneIcon
               className="
-                w-[160px] sm:w-[200px] lg:w-[240px]
+                w-[160px] sm:w-[200px] lg:w-[240px] h-auto
                 drop-shadow-xl select-none
+                text-xiomara-navy
                 motion-safe:animate-slideInUp [animation-delay:.1s]
                 transition-transform duration-500 ease-out
-                hover:scale-[1.03] hover:-translate-y-0.5
+                hover:scale-[1.03] hover:-translate-y-0.5 hover:text-xiomara-pink
                 will-change-transform
               "
-              draggable="false"
             />
           </div>
 
