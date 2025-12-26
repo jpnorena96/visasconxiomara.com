@@ -8,7 +8,7 @@ import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import {
-  Upload, CheckCircle2, XCircle, Clock, FileText, Trash2, Download, Loader2, Percent, ShieldCheck, ArrowRight, RefreshCw,
+  Upload, CheckCircle2, XCircle, Clock, FileText, Trash2, Download, Loader2, Percent, ShieldCheck, ArrowRight, RefreshCw, LogOut
 } from "lucide-react";
 
 // IMPORTA TODO DESDE EL BARREL "src/components/ui/index.jsx"
@@ -53,7 +53,7 @@ const getAge = (dob) => {
 }
 
 export default function ClientPortal() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // server data
   const [cats, setCats] = useState([]);
@@ -342,6 +342,9 @@ export default function ClientPortal() {
             <h1 className="text-3xl font-bold text-xiomara-navy">Portal del Cliente</h1>
             <Button variant="ghost" size="icon" onClick={loadAll} className="h-8 w-8 text-ink-400 hover:text-xiomara-sky" title="Recargar datos">
               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={logout} className="h-8 gap-2 text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3" title="Cerrar sesión">
+              <LogOut size={16} /> <span className="hidden sm:inline">Salir</span>
             </Button>
           </div>
           <p className="text-sm text-ink-600 mt-1">

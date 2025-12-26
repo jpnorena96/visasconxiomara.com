@@ -35,14 +35,22 @@ export default function Footer() {
             {/* Social Icons */}
             <div className="flex items-center gap-2 mt-2">
               {[
-                { icon: Instagram, label: "Instagram", href: "#" },
-                { icon: Facebook, label: "Facebook", href: "#" },
-                { icon: Linkedin, label: "LinkedIn", href: "#" },
-                { icon: Youtube, label: "YouTube", href: "#" },
+                {
+                  icon: Instagram,
+                  label: "Instagram",
+                  href: "https://www.instagram.com/visasconxiomara?igsh=eXJnMXBnNXhyenU4&utm_source=qr"
+                },
+                {
+                  icon: Youtube,
+                  label: "TikTok",
+                  href: "https://www.tiktok.com/@inkalandsimmigration?_r=1&_t=ZS-92TmR26bmu0"
+                },
               ].map((social, idx) => (
                 <a
                   key={idx}
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={social.label}
                   className="p-2.5 rounded-full bg-white/5 text-white/70 hover:bg-xiomara-pink hover:text-white transition-all duration-300"
                 >

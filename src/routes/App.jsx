@@ -26,12 +26,17 @@ import IntakeForm from "../pages/client/IntakeForm";
 import ProtectedRoute from "./ProtectedRoute";
 import WhatsAppButton from "../components/WhatsAppButton";
 
+const ConditionalNavbar = () => {
+  const { user } = useAuth();
+  return !user ? <Navbar /> : null;
+};
+
 export default function App() {
   return (
     <AuthProvider>
       <div className="min-h-screen flex flex-col">
-        {/* Navbar global */}
-        <Navbar />
+        {/* Navbar global (solo si no hay usuario) */}
+        <ConditionalNavbar />
 
         {/* Contenido principal */}
         <main className="flex-1">
@@ -86,7 +91,7 @@ export default function App() {
               }
             />
 
-            {/* Cliente (usa rol 'customer' del backend) */}
+            {/* Cliente */}
             <Route
               path="/portal"
               element={

@@ -5,12 +5,14 @@ import {
   Users, FileText, CheckCircle, XCircle, Clock, TrendingUp,
   Calendar, DollarSign, AlertTriangle, Download, Filter,
   Search, MoreVertical, Eye, Edit, Trash2, ArrowUpRight,
-  BarChart3, PieChart, Activity, UserCheck, FileCheck
+  BarChart3, PieChart, Activity, UserCheck, FileCheck, LogOut
 } from 'lucide-react'
 import { api } from '../../utils/api'
 import { toast } from 'sonner'
+import { useAuth } from '../../context/AuthContext'
 
 export default function Dashboard() {
+  const { logout } = useAuth()
   const [stats, setStats] = useState({
     totalClients: 0,
     activeClients: 0,
@@ -179,6 +181,13 @@ export default function Dashboard() {
               <button className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-gradient-to-r from-xiomara-sky to-xiomara-pink text-white font-semibold hover:shadow-lg transition-all">
                 <Calendar size={18} />
                 Hoy: {new Date().toLocaleDateString('es-ES')}
+              </button>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-2 px-4 h-10 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-semibold hover:bg-rose-100 transition-all"
+              >
+                <LogOut size={18} />
+                Salir
               </button>
             </div>
           </div>
